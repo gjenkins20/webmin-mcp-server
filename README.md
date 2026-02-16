@@ -530,6 +530,232 @@ Delete a cron job. **Dangerous operation - blocked in safe mode.**
 }
 ```
 
+### `list_groups`
+
+List all system groups.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_count": 78,
+    "regular_count": 5,
+    "system_count": 73,
+    "regular_groups": [
+      {"name": "users", "gid": 1000, "members": ["admin"], "member_count": 1}
+    ],
+    "system_groups": [
+      {"name": "root", "gid": 0, "members": [], "member_count": 0}
+    ]
+  }
+}
+```
+
+### `create_user`
+
+Create a new system user. **Dangerous operation - blocked in safe mode.**
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Username (lowercase, max 32 chars) |
+| `password` | string | Yes | Password for the new user |
+| `real_name` | string | No | Full name/comment |
+| `home_dir` | string | No | Home directory (default: /home/username) |
+| `shell` | string | No | Login shell (default: /bin/bash) |
+| `uid` | integer | No | User ID (auto-assigned if not specified) |
+| `gid` | integer | No | Group ID (auto-assigned if not specified) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "create",
+    "success": true,
+    "user": {
+      "username": "newuser",
+      "uid": 1001,
+      "gid": 1001,
+      "real_name": "New User",
+      "home": "/home/newuser",
+      "shell": "/bin/bash"
+    }
+  }
+}
+```
+
+### `delete_user`
+
+Delete a system user. **Dangerous operation - blocked in safe mode.**
+
+Critical users (root, daemon, bin, nobody, etc.) cannot be deleted.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Username to delete |
+| `delete_home` | boolean | No | Whether to delete home directory (default: false) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "delete",
+    "success": true,
+    "deleted_user": {
+      "username": "olduser",
+      "uid": 1001,
+      "home": "/home/olduser"
+    },
+    "home_deleted": false
+  }
+}
+```
+
+### `modify_user`
+
+Modify an existing system user. Only specify fields you want to change.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Current username |
+| `new_username` | string | No | New username |
+| `real_name` | string | No | New full name |
+| `home_dir` | string | No | New home directory |
+| `shell` | string | No | New login shell |
+| `uid` | integer | No | New user ID |
+| `gid` | integer | No | New group ID |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "modify",
+    "success": true,
+    "user": {
+      "username": "testuser",
+      "uid": 1000,
+      "gid": 1000,
+      "real_name": "Updated Name",
+      "home": "/home/testuser",
+      "shell": "/bin/zsh"
+    },
+    "changes": {
+      "real_name": true,
+      "shell": true
+    }
+  }
+}
+```
+
+### `change_password`
+
+Change a user's password. **Dangerous operation - blocked in safe mode.**
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Username |
+| `new_password` | string | Yes | New password |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "change_password",
+    "success": true,
+    "username": "testuser"
+  }
+}
+```
+
+### `get_package_info`
+
+Get detailed information about an installed package.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `package_name` | string | Yes | Name of the package |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "name": "bash",
+    "type": "deb",
+    "description": "GNU Bourne Again SHell",
+    "architecture": "amd64",
+    "version": "5.2.21-2ubuntu4",
+    "maintainer": "Ubuntu Developers",
+    "install_date": "2024-01-15",
+    "url": "https://www.gnu.org/software/bash/"
+  }
+}
+```
+
+### `list_available_updates`
+
+List all available package updates, including security updates.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_count": 81,
+    "security_count": 12,
+    "updates": [
+      {
+        "name": "bash",
+        "current_version": "5.2.20-1",
+        "new_version": "5.2.21-2",
+        "description": "GNU Bourne Again SHell",
+        "source": "apt",
+        "system": "apt",
+        "is_security": false
+      }
+    ],
+    "security_updates": [
+      {
+        "name": "openssl",
+        "current_version": "3.0.12",
+        "new_version": "3.0.13",
+        "description": "SSL toolkit",
+        "is_security": true
+      }
+    ]
+  }
+}
+```
+
+### `get_package_count`
+
+Get the total count of installed packages.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "installed_count": 1249
+  }
+}
+```
+
 ## Safety Framework
 
 The server includes a safety framework to prevent dangerous operations:
@@ -549,10 +775,16 @@ Critical services that cannot be stopped or disabled:
 - `systemd-*` - Core system services
 - `dbus`, `networking`
 
+### Protected Users
+
+Critical system users that cannot be deleted:
+- `root`, `daemon`, `bin`, `sys`, `sync`, `nobody`
+- `systemd-network`, `systemd-resolve`
+
 ### Safe Mode
 
 Safe mode is enabled by default (`WEBMIN_SAFE_MODE=true`). In safe mode:
-- Dangerous operations are blocked
+- Dangerous operations are blocked (user creation/deletion, password changes, cron deletion)
 - Critical services cannot be restarted
 - Some services can only be restarted (not stopped)
 

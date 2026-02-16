@@ -15,7 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
-from .tools import cron, services, system
+from .tools import cron, packages, services, system, users
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -382,6 +382,182 @@ TOOLS = [
             "required": ["index"],
         },
     ),
+    # Phase 3: User Management Tools
+    Tool(
+        name="list_groups",
+        description=(
+            "List all system groups. Returns both regular groups (GID >= 1000) "
+            "and system groups separately, with member information."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="create_user",
+        description=(
+            "Create a new system user. This is a dangerous operation and is "
+            "blocked in safe mode."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "description": "Username (lowercase letters, digits, underscores, hyphens)",
+                },
+                "password": {
+                    "type": "string",
+                    "description": "Password for the new user",
+                },
+                "real_name": {
+                    "type": "string",
+                    "description": "Full name or comment",
+                },
+                "home_dir": {
+                    "type": "string",
+                    "description": "Home directory (default: /home/username)",
+                },
+                "shell": {
+                    "type": "string",
+                    "description": "Login shell (default: /bin/bash)",
+                },
+                "uid": {
+                    "type": "integer",
+                    "description": "User ID (auto-assigned if not specified)",
+                },
+                "gid": {
+                    "type": "integer",
+                    "description": "Group ID (auto-assigned if not specified)",
+                },
+            },
+            "required": ["username", "password"],
+        },
+    ),
+    Tool(
+        name="delete_user",
+        description=(
+            "Delete a system user. This is a dangerous operation and is "
+            "blocked in safe mode. Critical system users cannot be deleted."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "description": "Username of the user to delete",
+                },
+                "delete_home": {
+                    "type": "boolean",
+                    "description": "Whether to delete the user's home directory",
+                    "default": False,
+                },
+            },
+            "required": ["username"],
+        },
+    ),
+    Tool(
+        name="modify_user",
+        description=(
+            "Modify an existing system user. Only specify fields you want to change."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "description": "Current username of the user to modify",
+                },
+                "new_username": {
+                    "type": "string",
+                    "description": "New username",
+                },
+                "real_name": {
+                    "type": "string",
+                    "description": "New full name or comment",
+                },
+                "home_dir": {
+                    "type": "string",
+                    "description": "New home directory",
+                },
+                "shell": {
+                    "type": "string",
+                    "description": "New login shell",
+                },
+                "uid": {
+                    "type": "integer",
+                    "description": "New user ID",
+                },
+                "gid": {
+                    "type": "integer",
+                    "description": "New group ID",
+                },
+            },
+            "required": ["username"],
+        },
+    ),
+    Tool(
+        name="change_password",
+        description=(
+            "Change a user's password. This is a dangerous operation and is "
+            "blocked in safe mode."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "description": "Username of the user",
+                },
+                "new_password": {
+                    "type": "string",
+                    "description": "New password",
+                },
+            },
+            "required": ["username", "new_password"],
+        },
+    ),
+    # Phase 3: Package Information Tools (Read-only)
+    Tool(
+        name="get_package_info",
+        description=(
+            "Get detailed information about an installed package including "
+            "version, description, maintainer, and install date."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "package_name": {
+                    "type": "string",
+                    "description": "Name of the package to query",
+                },
+            },
+            "required": ["package_name"],
+        },
+    ),
+    Tool(
+        name="list_available_updates",
+        description=(
+            "List all available package updates including security updates. "
+            "Shows current and new versions for each package."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_package_count",
+        description="Get the total count of installed packages on the system.",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
 ]
 
 
@@ -594,6 +770,104 @@ async def dispatch_tool(
                 message="Missing required argument: index",
             )
         return await cron.delete_cron_job(client, index, config.safe_mode)
+
+    # Phase 3 tools - User Management
+    if name == "list_groups":
+        return await users.list_groups(client)
+
+    if name == "create_user":
+        username = arguments.get("username")
+        password = arguments.get("password")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        if not password:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: password",
+            )
+        return await users.create_user(
+            client,
+            username=username,
+            password=password,
+            real_name=arguments.get("real_name"),
+            home_dir=arguments.get("home_dir"),
+            shell=arguments.get("shell", "/bin/bash"),
+            uid=arguments.get("uid"),
+            gid=arguments.get("gid"),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "delete_user":
+        username = arguments.get("username")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        return await users.delete_user(
+            client,
+            username=username,
+            delete_home=arguments.get("delete_home", False),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "modify_user":
+        username = arguments.get("username")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        return await users.modify_user(
+            client,
+            username=username,
+            new_username=arguments.get("new_username"),
+            real_name=arguments.get("real_name"),
+            home_dir=arguments.get("home_dir"),
+            shell=arguments.get("shell"),
+            uid=arguments.get("uid"),
+            gid=arguments.get("gid"),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "change_password":
+        username = arguments.get("username")
+        new_password = arguments.get("new_password")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        if not new_password:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: new_password",
+            )
+        return await users.change_password(
+            client,
+            username=username,
+            new_password=new_password,
+            safe_mode=config.safe_mode,
+        )
+
+    # Phase 3 tools - Package Information
+    if name == "get_package_info":
+        package_name = arguments.get("package_name")
+        if not package_name:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: package_name",
+            )
+        return await packages.get_package_info(client, package_name)
+
+    if name == "list_available_updates":
+        return await packages.list_available_updates(client)
+
+    if name == "get_package_count":
+        return await packages.get_package_count(client)
 
     # Unknown tool
     return ToolResult.fail(

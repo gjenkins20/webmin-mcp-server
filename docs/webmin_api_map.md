@@ -173,7 +173,12 @@ List all system users.
 
 - **Method:** `useradmin::list_users`
 - **Arguments:** None
-- **Returns:** List of user dictionaries
+- **Returns:** List of user dictionaries with keys: `user`, `uid`, `gid`, `real`, `home`, `shell`, `line`
+- **Example:**
+  ```python
+  users = await client.call("useradmin", "list_users")
+  # Returns: [{"user": "root", "uid": 0, "gid": 0, "real": "root", "home": "/root", "shell": "/bin/bash", "line": "root:x:0:0:root:/root:/bin/bash"}, ...]
+  ```
 
 ### list_groups
 
@@ -181,16 +186,115 @@ List all system groups.
 
 - **Method:** `useradmin::list_groups`
 - **Arguments:** None
-- **Returns:** List of group dictionaries
+- **Returns:** List of group dictionaries with keys: `group`, `gid`, `members`
+- **Example:**
+  ```python
+  groups = await client.call("useradmin", "list_groups")
+  # Returns: [{"group": "root", "gid": 0, "members": ""}, {"group": "sudo", "gid": 27, "members": "admin,user"}, ...]
+  ```
 
-### create_user / delete_user
+### create_user
 
-Manage users.
+Create a new system user.
 
-- **Methods:**
-  - `useradmin::create_user`
-  - `useradmin::delete_user`
+- **Method:** `useradmin::create_user`
+- **Arguments:** User dictionary with keys: `user`, `pass`, `uid`, `gid`, `real`, `home`, `shell`
+- **Returns:** Integer (1 on success)
 - **Safety Tier:** Dangerous
+- **Example:**
+  ```python
+  user_data = {
+      "user": "newuser",
+      "pass": "password123",
+      "uid": 1001,
+      "gid": 1001,
+      "real": "New User",
+      "home": "/home/newuser",
+      "shell": "/bin/bash"
+  }
+  result = await client.call("useradmin", "create_user", user_data)
+  # Returns: 1
+  ```
+
+### modify_user
+
+Modify an existing user.
+
+- **Method:** `useradmin::modify_user`
+- **Arguments:** `old_user` (dict), `new_user` (dict) — both full user dictionaries
+- **Returns:** Integer (1 on success)
+- **Safety Tier:** Moderate
+- **Example:**
+  ```python
+  old_user = users[0]  # From list_users
+  new_user = old_user.copy()
+  new_user["shell"] = "/bin/zsh"
+  result = await client.call("useradmin", "modify_user", old_user, new_user)
+  ```
+
+### delete_user
+
+Delete a system user.
+
+- **Method:** `useradmin::delete_user`
+- **Arguments:** User dictionary (must include `line` field from list_users)
+- **Returns:** None
+- **Safety Tier:** Dangerous
+- **Known Quirks:** Requires the full user dictionary including the `line` field
+- **Example:**
+  ```python
+  user_to_delete = users[0]  # From list_users - must have 'line' field
+  await client.call("useradmin", "delete_user", user_to_delete)
+  ```
+
+---
+
+## Module: software (Package Management)
+
+### list_packages
+
+Get count of installed packages.
+
+- **Method:** `software::list_packages`
+- **Arguments:** None
+- **Returns:** Integer (package count)
+- **Example:**
+  ```python
+  count = await client.call("software", "list_packages")
+  # Returns: 1249
+  ```
+
+### package_info
+
+Get detailed information about an installed package.
+
+- **Method:** `software::package_info`
+- **Arguments:** `package_name` (string)
+- **Returns:** List with package details: [name, type, description, arch, version, maintainer, install_date, url]
+- **Known Quirks:** Description may be a Binary object (xmlrpc.client.Binary) that needs decoding
+- **Example:**
+  ```python
+  info = await client.call("software", "package_info", "bash")
+  # Returns: ["bash", "deb", "GNU Bourne Again SHell", "amd64", "5.2.21-2ubuntu4", "Ubuntu Developers", None, "https://www.gnu.org/software/bash/"]
+  ```
+
+### Package Updates (via system-status)
+
+Available package updates are returned by `system-status::collect_system_info` in the `poss` field.
+
+- **Method:** `system-status::collect_system_info`
+- **Field:** `poss` — List of available updates
+- **Example:**
+  ```python
+  info = await client.call("system-status", "collect_system_info")
+  updates = info.get("poss", [])
+  # Returns: [{"name": "bash", "oldversion": "5.2.20", "version": "5.2.21", "security": 0, ...}, ...]
+  ```
+
+### Package Install/Remove (NOT Available via XML-RPC)
+
+Package installation and removal operations are **NOT available** via XML-RPC.
+They require CGI form submissions and are not implemented in this MCP server.
 
 ---
 
@@ -258,7 +362,7 @@ The following endpoints will be documented as features are implemented:
 - [ ] quota:: — Disk quota management
 - [ ] passwd:: — Password changes
 - [ ] acl:: — Webmin ACL management
-- [ ] software:: — Package management
+- [x] software:: — Package management (read-only)
 - [ ] smart_status:: — SMART disk health
 - [ ] backup_config:: — Configuration backups
 - [ ] webminlog:: — Audit log access
@@ -267,5 +371,5 @@ The following endpoints will be documented as features are implemented:
 
 ---
 
-Document Version: 1.1
+Document Version: 1.2
 Last Updated: February 16, 2026
