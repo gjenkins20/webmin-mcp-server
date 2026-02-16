@@ -549,9 +549,186 @@ List all LVM logical volumes.
 
 ---
 
+---
+
+## Module: time (System Time)
+
+### get_system_time
+
+Get the current system time and timezone.
+
+- **Method:** `time::get_system_time`
+- **Arguments:** None
+- **Returns:** Dictionary or list with time components (year, month, day, hour, minute, second, timezone)
+- **Example:**
+  ```python
+  time = await client.call("time", "get_system_time")
+  # Returns: {"year": 2026, "month": 2, "day": 16, "hour": 10, ...}
+  ```
+
+---
+
+## Module: init (Runlevels)
+
+### list_runlevels
+
+List system runlevels.
+
+- **Method:** `init::list_runlevels`
+- **Arguments:** None
+- **Returns:** List of runlevel dictionaries or simple level identifiers
+- **Example:**
+  ```python
+  levels = await client.call("init", "list_runlevels")
+  # Returns: [{"level": "0", "name": "halt", "desc": "System halt"}, ...]
+  ```
+
+---
+
+## Module: sshd (SSH Configuration)
+
+### get_sshd_config
+
+Get SSH daemon configuration.
+
+- **Method:** `sshd::get_sshd_config`
+- **Arguments:** None
+- **Returns:** Dictionary with SSH configuration settings
+- **Example:**
+  ```python
+  config = await client.call("sshd", "get_sshd_config")
+  # Returns: {"Port": "22", "PermitRootLogin": "no", ...}
+  ```
+
+---
+
+## Module: webminlog (Audit Logs)
+
+### list_webmin_log
+
+List Webmin action audit logs.
+
+- **Method:** `webminlog::list_webmin_log`
+- **Arguments:** None
+- **Returns:** List of log entry dictionaries with keys: `id`, `time`, `user`, `module`, `script`, `desc`, `ip`, `sid`
+- **Example:**
+  ```python
+  logs = await client.call("webminlog", "list_webmin_log")
+  # Returns: [{"id": 1, "user": "admin", "module": "useradmin", ...}, ...]
+  ```
+
+---
+
+## Module: backup-config (Configuration Backups)
+
+### list_backups
+
+List configured backups.
+
+- **Method:** `backup-config::list_backups`
+- **Arguments:** None
+- **Returns:** List of backup configuration dictionaries
+- **Example:**
+  ```python
+  backups = await client.call("backup-config", "list_backups")
+  # Returns: [{"id": "backup1", "file": "/path/to/backup", ...}, ...]
+  ```
+
+---
+
+## Module: fail2ban (Intrusion Prevention)
+
+### list_jails
+
+List configured Fail2ban jails.
+
+- **Method:** `fail2ban::list_jails`
+- **Arguments:** None
+- **Returns:** List of jail configurations
+- **Example:**
+  ```python
+  jails = await client.call("fail2ban", "list_jails")
+  # Returns: [{"name": "sshd", "enabled": 1, "maxretry": 5, ...}, ...]
+  ```
+
+### get_status / get_jail_status
+
+Get Fail2ban status (overall or for specific jail).
+
+- **Methods:**
+  - `fail2ban::get_status` (overall)
+  - `fail2ban::get_jail_status` (specific jail)
+- **Arguments:** `jail` (string) for get_jail_status
+- **Returns:** Status dictionary with running state and banned IPs
+- **Example:**
+  ```python
+  status = await client.call("fail2ban", "get_jail_status", "sshd")
+  # Returns: {"running": True, "banned": ["192.168.1.100"], ...}
+  ```
+
+### list_banned / list_all_banned
+
+List currently banned IP addresses.
+
+- **Methods:**
+  - `fail2ban::list_banned` (specific jail)
+  - `fail2ban::list_all_banned` (all jails)
+- **Arguments:** `jail` (string) for list_banned
+- **Returns:** List of banned IPs
+- **Example:**
+  ```python
+  banned = await client.call("fail2ban", "list_all_banned")
+  # Returns: [{"ip": "192.168.1.100", "jail": "sshd", ...}, ...]
+  ```
+
+---
+
+## Module: mysql (Database Management)
+
+### list_databases
+
+List MySQL databases.
+
+- **Method:** `mysql::list_databases`
+- **Arguments:** None
+- **Returns:** List of database dictionaries
+- **Example:**
+  ```python
+  dbs = await client.call("mysql", "list_databases")
+  # Returns: [{"name": "wordpress", "tables": 12, ...}, ...]
+  ```
+
+### list_users
+
+List MySQL users.
+
+- **Method:** `mysql::list_users`
+- **Arguments:** None
+- **Returns:** List of user dictionaries
+- **Example:**
+  ```python
+  users = await client.call("mysql", "list_users")
+  # Returns: [{"user": "root", "host": "localhost", ...}, ...]
+  ```
+
+### get_mysql_status
+
+Get MySQL server status.
+
+- **Method:** `mysql::get_mysql_status`
+- **Arguments:** None
+- **Returns:** Status dictionary with version, uptime, connections, etc.
+- **Example:**
+  ```python
+  status = await client.call("mysql", "get_mysql_status")
+  # Returns: {"version": "8.0.35", "uptime": 86400, ...}
+  ```
+
+---
+
 ## Endpoints To Be Documented
 
-The following endpoints will be documented as features are implemented:
+The following endpoints may be documented in future phases:
 
 - [ ] quota:: — Disk quota management
 - [ ] passwd:: — Password changes
@@ -559,15 +736,17 @@ The following endpoints will be documented as features are implemented:
 - [x] software:: — Package management (read-only)
 - [x] smart-status:: — SMART disk health
 - [x] lvm:: — Logical Volume Manager
-- [ ] backup-config:: — Configuration backups
-- [ ] webminlog:: — Audit log access
+- [x] backup-config:: — Configuration backups
+- [x] webminlog:: — Audit log access
+- [x] time:: — System time
+- [x] sshd:: — SSH configuration
+- [x] init:: — Runlevels
+- [x] fail2ban:: — Intrusion prevention
+- [x] mysql:: — Database management
 - [ ] firewall:: — Firewall rules (not available on some systems)
 - [ ] bind8:: — DNS configuration (not available on some systems)
-- [ ] time:: — System time
-- [ ] sshd:: — SSH configuration
-- [ ] init:: — Runlevels
 
 ---
 
-Document Version: 1.4
+Document Version: 1.5
 Last Updated: February 16, 2026

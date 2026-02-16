@@ -15,7 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
-from .tools import cron, files, packages, services, storage, system, users
+from .tools import admin, cron, database, files, packages, security, services, storage, system, users
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -768,6 +768,161 @@ TOOLS = [
             "required": [],
         },
     ),
+    # Phase 6: System Administration Tools
+    Tool(
+        name="get_system_time",
+        description=(
+            "Get the current system time and timezone configuration."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_runlevels",
+        description=(
+            "List system runlevels and their descriptions."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_ssh_config",
+        description=(
+            "Get SSH server (sshd) configuration settings including port, "
+            "authentication methods, and security options."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    # Phase 6: Audit & Logging Tools
+    Tool(
+        name="list_webmin_logs",
+        description=(
+            "List Webmin action/audit logs. Shows recent actions performed "
+            "through Webmin including user, module, and action details."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of log entries to return (default: 100)",
+                },
+                "module": {
+                    "type": "string",
+                    "description": "Filter by module name (e.g., 'useradmin', 'init')",
+                },
+                "user": {
+                    "type": "string",
+                    "description": "Filter by username",
+                },
+            },
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_backups",
+        description=(
+            "List Webmin configuration backups. Shows available backups "
+            "that can be restored."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    # Phase 6: Security Tools (Fail2ban)
+    Tool(
+        name="list_fail2ban_jails",
+        description=(
+            "List all Fail2ban jails and their status. Shows which jails "
+            "are enabled and their current ban counts."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_fail2ban_status",
+        description=(
+            "Get Fail2ban status for a specific jail or overall. Returns "
+            "currently banned IPs and ban counts."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "jail": {
+                    "type": "string",
+                    "description": "Jail name for specific status (optional)",
+                },
+            },
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_banned_ips",
+        description=(
+            "List all currently banned IP addresses from Fail2ban."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "jail": {
+                    "type": "string",
+                    "description": "Filter by jail name (optional)",
+                },
+            },
+            "required": [],
+        },
+    ),
+    # Phase 6: Database Tools (MySQL)
+    Tool(
+        name="list_mysql_databases",
+        description=(
+            "List all MySQL databases. Separates user databases from "
+            "system databases (information_schema, mysql, etc.)."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_mysql_users",
+        description=(
+            "List all MySQL users and their host permissions."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_mysql_status",
+        description=(
+            "Get MySQL server status including version, uptime, "
+            "connections, and query statistics."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
 ]
 
 
@@ -1207,6 +1362,54 @@ async def dispatch_tool(
             client,
             volume_group=arguments.get("volume_group"),
         )
+
+    # Phase 6 tools - System Administration
+    if name == "get_system_time":
+        return await admin.get_system_time(client)
+
+    if name == "list_runlevels":
+        return await admin.list_runlevels(client)
+
+    if name == "get_ssh_config":
+        return await admin.get_ssh_config(client)
+
+    # Phase 6 tools - Audit & Logging
+    if name == "list_webmin_logs":
+        return await admin.list_webmin_logs(
+            client,
+            limit=arguments.get("limit", 100),
+            module=arguments.get("module"),
+            user=arguments.get("user"),
+        )
+
+    if name == "list_backups":
+        return await admin.list_backups(client)
+
+    # Phase 6 tools - Security (Fail2ban)
+    if name == "list_fail2ban_jails":
+        return await security.list_fail2ban_jails(client)
+
+    if name == "get_fail2ban_status":
+        return await security.get_fail2ban_status(
+            client,
+            jail=arguments.get("jail"),
+        )
+
+    if name == "list_banned_ips":
+        return await security.list_banned_ips(
+            client,
+            jail=arguments.get("jail"),
+        )
+
+    # Phase 6 tools - Database (MySQL)
+    if name == "list_mysql_databases":
+        return await database.list_mysql_databases(client)
+
+    if name == "list_mysql_users":
+        return await database.list_mysql_users(client)
+
+    if name == "get_mysql_status":
+        return await database.get_mysql_status(client)
 
     # Unknown tool
     return ToolResult.fail(

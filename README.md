@@ -13,6 +13,10 @@ manage Linux systems via Webmin's web-based administration interface.
 - **Package Management**: Package info and available updates
 - **File Operations**: Read, write, copy, rename, and delete files
 - **Storage Management**: SMART disk health monitoring and LVM volume management
+- **System Administration**: Time/timezone, runlevels, SSH configuration
+- **Audit & Logging**: Webmin action logs and configuration backups
+- **Security**: Fail2ban jail status and banned IP management
+- **Database**: MySQL database and user listing, server status
 
 ## Requirements
 
@@ -1084,6 +1088,260 @@ List all LVM logical volumes.
         "stripe_size": null
       }
     ]
+  }
+}
+```
+
+### `get_system_time`
+
+Get the current system time and timezone configuration.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "timezone": "America/New_York",
+    "year": 2026,
+    "month": 2,
+    "day": 16,
+    "hour": 10,
+    "minute": 30,
+    "second": 45
+  }
+}
+```
+
+### `list_runlevels`
+
+List system runlevels and their descriptions.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 7,
+    "runlevels": [
+      {"level": "0", "name": "halt", "description": "System halt"},
+      {"level": "3", "name": "multi", "description": "Multi-user mode"}
+    ]
+  }
+}
+```
+
+### `get_ssh_config`
+
+Get SSH server (sshd) configuration settings.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "settings": {
+      "port": "22",
+      "permit_root_login": "no",
+      "password_authentication": "yes",
+      "pubkey_authentication": "yes"
+    }
+  }
+}
+```
+
+### `list_webmin_logs`
+
+List Webmin action/audit logs.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `limit` | integer | No | Max entries to return (default: 100) |
+| `module` | string | No | Filter by module name |
+| `user` | string | No | Filter by username |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 50,
+    "logs": [
+      {
+        "id": 1,
+        "time": 1708091445,
+        "user": "admin",
+        "module": "useradmin",
+        "action": "save_user.cgi",
+        "description": "Created user testuser",
+        "ip": "192.168.1.100"
+      }
+    ]
+  }
+}
+```
+
+### `list_backups`
+
+List Webmin configuration backups.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 1,
+    "backups": [
+      {
+        "id": "backup1",
+        "file": "/var/webmin/backups/config.tar.gz",
+        "schedule": "daily",
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### `list_fail2ban_jails`
+
+List all Fail2ban jails and their status.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 2,
+    "jails": [
+      {
+        "name": "sshd",
+        "enabled": true,
+        "maxretry": 5,
+        "bantime": 3600,
+        "currently_banned": 3
+      }
+    ]
+  }
+}
+```
+
+### `get_fail2ban_status`
+
+Get Fail2ban status for a specific jail or overall.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jail` | string | No | Jail name for specific status |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "jail": "sshd",
+    "running": true,
+    "currently_banned": 3,
+    "banned_ips": ["192.168.1.100", "10.0.0.50"]
+  }
+}
+```
+
+### `list_banned_ips`
+
+List all currently banned IP addresses from Fail2ban.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jail` | string | No | Filter by jail name |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 3,
+    "banned_ips": [
+      {"ip": "192.168.1.100", "jail": "sshd"},
+      {"ip": "10.0.0.50", "jail": "sshd"}
+    ]
+  }
+}
+```
+
+### `list_mysql_databases`
+
+List all MySQL databases.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_count": 6,
+    "user_database_count": 2,
+    "system_database_count": 4,
+    "user_databases": [
+      {"name": "wordpress", "tables": 12, "size": 52428800}
+    ],
+    "system_databases": [
+      {"name": "mysql"},
+      {"name": "information_schema"}
+    ]
+  }
+}
+```
+
+### `list_mysql_users`
+
+List all MySQL users and their host permissions.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 3,
+    "users": [
+      {"user": "root", "host": "localhost", "password_set": true},
+      {"user": "wordpress", "host": "%", "password_set": true}
+    ]
+  }
+}
+```
+
+### `get_mysql_status`
+
+Get MySQL server status.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "running": true,
+    "version": "8.0.35",
+    "uptime": 86400,
+    "threads": 5,
+    "connections": 500
   }
 }
 ```
