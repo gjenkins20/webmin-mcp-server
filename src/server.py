@@ -15,7 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
-from .tools import services, system
+from .tools import cron, services, system
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -262,6 +262,126 @@ TOOLS = [
             "required": ["service"],
         },
     ),
+    # Phase 2: Cron Management Tools
+    Tool(
+        name="create_cron_job",
+        description=(
+            "Create a new scheduled cron job. Specify the command to run and "
+            "the schedule using cron syntax (minutes, hours, days, months, weekdays). "
+            "Use '*' for 'every' (e.g., '*/5' for every 5 minutes)."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "Command to execute",
+                },
+                "minutes": {
+                    "type": "string",
+                    "description": "Minutes (0-59, or * for every minute, or */5 for every 5 minutes)",
+                    "default": "*",
+                },
+                "hours": {
+                    "type": "string",
+                    "description": "Hours (0-23, or * for every hour)",
+                    "default": "*",
+                },
+                "days": {
+                    "type": "string",
+                    "description": "Day of month (1-31, or * for every day)",
+                    "default": "*",
+                },
+                "months": {
+                    "type": "string",
+                    "description": "Month (1-12, or * for every month)",
+                    "default": "*",
+                },
+                "weekdays": {
+                    "type": "string",
+                    "description": "Day of week (0-7, 0 and 7 are Sunday, or * for every day)",
+                    "default": "*",
+                },
+                "user": {
+                    "type": "string",
+                    "description": "User to run the job as",
+                    "default": "root",
+                },
+                "active": {
+                    "type": "boolean",
+                    "description": "Whether the job is active",
+                    "default": True,
+                },
+            },
+            "required": ["command"],
+        },
+    ),
+    Tool(
+        name="edit_cron_job",
+        description=(
+            "Edit an existing cron job. Use list_cron_jobs to find the job index. "
+            "Only specify the fields you want to change."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "integer",
+                    "description": "Index of the job to edit (from list_cron_jobs)",
+                },
+                "command": {
+                    "type": "string",
+                    "description": "New command to execute",
+                },
+                "minutes": {
+                    "type": "string",
+                    "description": "New minutes value",
+                },
+                "hours": {
+                    "type": "string",
+                    "description": "New hours value",
+                },
+                "days": {
+                    "type": "string",
+                    "description": "New day of month value",
+                },
+                "months": {
+                    "type": "string",
+                    "description": "New month value",
+                },
+                "weekdays": {
+                    "type": "string",
+                    "description": "New day of week value",
+                },
+                "user": {
+                    "type": "string",
+                    "description": "New user to run as",
+                },
+                "active": {
+                    "type": "boolean",
+                    "description": "New active state",
+                },
+            },
+            "required": ["index"],
+        },
+    ),
+    Tool(
+        name="delete_cron_job",
+        description=(
+            "Delete a cron job. This is a dangerous operation and is blocked "
+            "in safe mode. Use list_cron_jobs to find the job index."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "integer",
+                    "description": "Index of the job to delete (from list_cron_jobs)",
+                },
+            },
+            "required": ["index"],
+        },
+    ),
 ]
 
 
@@ -423,6 +543,57 @@ async def dispatch_tool(
                 message="Missing required argument: service",
             )
         return await services.disable_service(client, service, config.safe_mode)
+
+    # Phase 2 tools - Cron Management
+    if name == "create_cron_job":
+        command = arguments.get("command")
+        if not command:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: command",
+            )
+        return await cron.create_cron_job(
+            client,
+            command=command,
+            minutes=arguments.get("minutes", "*"),
+            hours=arguments.get("hours", "*"),
+            days=arguments.get("days", "*"),
+            months=arguments.get("months", "*"),
+            weekdays=arguments.get("weekdays", "*"),
+            user=arguments.get("user", "root"),
+            active=arguments.get("active", True),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "edit_cron_job":
+        index = arguments.get("index")
+        if index is None:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: index",
+            )
+        return await cron.edit_cron_job(
+            client,
+            index=index,
+            command=arguments.get("command"),
+            minutes=arguments.get("minutes"),
+            hours=arguments.get("hours"),
+            days=arguments.get("days"),
+            months=arguments.get("months"),
+            weekdays=arguments.get("weekdays"),
+            user=arguments.get("user"),
+            active=arguments.get("active"),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "delete_cron_job":
+        index = arguments.get("index")
+        if index is None:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: index",
+            )
+        return await cron.delete_cron_job(client, index, config.safe_mode)
 
     # Unknown tool
     return ToolResult.fail(

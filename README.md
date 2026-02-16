@@ -433,6 +433,103 @@ Disable a service from starting at boot. Critical services are blocked.
 }
 ```
 
+### `create_cron_job`
+
+Create a new scheduled cron job.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `command` | string | Yes | Command to execute |
+| `minutes` | string | No | Minutes (0-59, *, */N). Default: * |
+| `hours` | string | No | Hours (0-23, *, */N). Default: * |
+| `days` | string | No | Day of month (1-31, *, */N). Default: * |
+| `months` | string | No | Month (1-12, *, */N). Default: * |
+| `weekdays` | string | No | Day of week (0-7, *, 0=Sunday). Default: * |
+| `user` | string | No | User to run as. Default: root |
+| `active` | boolean | No | Whether job is active. Default: true |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "create",
+    "success": true,
+    "job": {
+      "command": "/usr/bin/backup.sh",
+      "schedule": "0 2 * * *",
+      "user": "root",
+      "active": true,
+      "index": 13
+    },
+    "total_jobs": 14
+  }
+}
+```
+
+### `edit_cron_job`
+
+Edit an existing cron job. Only specify fields you want to change.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `index` | integer | Yes | Job index (from list_cron_jobs) |
+| `command` | string | No | New command |
+| `minutes` | string | No | New minutes value |
+| `hours` | string | No | New hours value |
+| `days` | string | No | New days value |
+| `months` | string | No | New months value |
+| `weekdays` | string | No | New weekdays value |
+| `user` | string | No | New user |
+| `active` | boolean | No | New active state |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "edit",
+    "success": true,
+    "job": {
+      "index": 13,
+      "command": "/usr/bin/backup.sh",
+      "schedule": "30 3 * * *",
+      "user": "root",
+      "active": true
+    }
+  }
+}
+```
+
+### `delete_cron_job`
+
+Delete a cron job. **Dangerous operation - blocked in safe mode.**
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `index` | integer | Yes | Job index (from list_cron_jobs) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "delete",
+    "success": true,
+    "deleted_job": {
+      "index": 13,
+      "command": "/usr/bin/backup.sh",
+      "user": "root"
+    },
+    "jobs_before": 14,
+    "jobs_after": 13
+  }
+}
+```
+
 ## Safety Framework
 
 The server includes a safety framework to prevent dangerous operations:
