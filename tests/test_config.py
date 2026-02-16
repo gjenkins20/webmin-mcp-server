@@ -255,13 +255,18 @@ class TestLoadMultiServerConfig:
         assert "test" in config.servers
         assert config.servers["test"].host == "test.local"
 
-    def test_load_from_legacy_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_load_from_legacy_env_vars(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Test loading config from legacy WEBMIN_* env vars."""
         monkeypatch.delenv("WEBMIN_SERVERS_JSON", raising=False)
         monkeypatch.delenv("WEBMIN_CONFIG_FILE", raising=False)
         monkeypatch.setenv("WEBMIN_HOST", "legacy.local")
         monkeypatch.setenv("WEBMIN_USERNAME", "legacyuser")
         monkeypatch.setenv("WEBMIN_PASSWORD", "legacypass")
+
+        # Change to temp directory to avoid loading local webmin-servers.json
+        monkeypatch.chdir(tmp_path)
 
         config = load_multi_server_config()
 
