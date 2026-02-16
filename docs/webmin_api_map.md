@@ -489,6 +489,66 @@ Webmin returns `xmlrpc.client.Fault` for module-level errors:
 
 ---
 
+## Module: smart-status (SMART Disk Health)
+
+### list_smart_disks_partitions
+
+List all SMART-capable disks and partitions.
+
+- **Method:** `smart-status::list_smart_disks_partitions`
+- **Arguments:** None
+- **Returns:** List of disk dictionaries with keys: `device`, `model`, `serial`, `capacity`, `smart`, `type`
+- **Example:**
+  ```python
+  disks = await client.call("smart-status", "list_smart_disks_partitions")
+  # Returns: [{"device": "/dev/sda", "model": "Samsung SSD", "smart": 1, ...}, ...]
+  ```
+
+### get_drive_status
+
+Get detailed SMART status for a specific drive.
+
+- **Method:** `smart-status::get_drive_status`
+- **Arguments:** `device` (string) — device path (e.g., "/dev/sda")
+- **Returns:** Dictionary with keys: `health`, `model`, `serial`, `firmware`, `temp`, `power_on`, `power_cycles`, `attrs`, `errors`
+- **Example:**
+  ```python
+  status = await client.call("smart-status", "get_drive_status", "/dev/sda")
+  # Returns: {"health": "PASSED", "temp": 35, "attrs": [...], ...}
+  ```
+
+---
+
+## Module: lvm (Logical Volume Manager)
+
+### list_volume_groups
+
+List all LVM volume groups.
+
+- **Method:** `lvm::list_volume_groups`
+- **Arguments:** None
+- **Returns:** List of VG dictionaries with keys: `name`, `size`, `free`, `pvs`, `lvs`, `pe_size`, `pe_total`, `pe_free`
+- **Example:**
+  ```python
+  vgs = await client.call("lvm", "list_volume_groups")
+  # Returns: [{"name": "vg_data", "size": 107374182400, "free": 53687091200, ...}, ...]
+  ```
+
+### list_logical_volumes
+
+List all LVM logical volumes.
+
+- **Method:** `lvm::list_logical_volumes`
+- **Arguments:** None
+- **Returns:** List of LV dictionaries with keys: `name`, `vg`, `size`, `device`, `active`, `mount`, `stripes`, `stripesize`
+- **Example:**
+  ```python
+  lvs = await client.call("lvm", "list_logical_volumes")
+  # Returns: [{"name": "lv_root", "vg": "vg_system", "size": 21474836480, ...}, ...]
+  ```
+
+---
+
 ## Endpoints To Be Documented
 
 The following endpoints will be documented as features are implemented:
@@ -497,13 +557,17 @@ The following endpoints will be documented as features are implemented:
 - [ ] passwd:: — Password changes
 - [ ] acl:: — Webmin ACL management
 - [x] software:: — Package management (read-only)
-- [ ] smart_status:: — SMART disk health
-- [ ] backup_config:: — Configuration backups
+- [x] smart-status:: — SMART disk health
+- [x] lvm:: — Logical Volume Manager
+- [ ] backup-config:: — Configuration backups
 - [ ] webminlog:: — Audit log access
-- [ ] firewall:: — Firewall rules
-- [ ] bind8:: — DNS configuration
+- [ ] firewall:: — Firewall rules (not available on some systems)
+- [ ] bind8:: — DNS configuration (not available on some systems)
+- [ ] time:: — System time
+- [ ] sshd:: — SSH configuration
+- [ ] init:: — Runlevels
 
 ---
 
-Document Version: 1.3
+Document Version: 1.4
 Last Updated: February 16, 2026

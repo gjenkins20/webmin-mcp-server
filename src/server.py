@@ -15,7 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
-from .tools import cron, files, packages, services, system, users
+from .tools import cron, files, packages, services, storage, system, users
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -709,6 +709,65 @@ TOOLS = [
             "required": [],
         },
     ),
+    # Phase 5: Storage Management Tools
+    Tool(
+        name="list_disks",
+        description=(
+            "List all physical disks with SMART capability. Shows device path, "
+            "model, serial number, capacity, and whether SMART is enabled."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_disk_health",
+        description=(
+            "Get SMART health status for a specific disk. Returns overall health, "
+            "temperature, power-on hours, SMART attributes, and any errors or warnings."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "device": {
+                    "type": "string",
+                    "description": "Device path (e.g., '/dev/sda', '/dev/nvme0n1')",
+                },
+            },
+            "required": ["device"],
+        },
+    ),
+    Tool(
+        name="list_volume_groups",
+        description=(
+            "List all LVM volume groups. Shows name, total size, free space, "
+            "physical volume count, and logical volume count for each VG."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_logical_volumes",
+        description=(
+            "List all LVM logical volumes. Shows name, size, volume group, "
+            "device path, and mount point for each LV."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "volume_group": {
+                    "type": "string",
+                    "description": "Optional volume group name to filter by",
+                },
+            },
+            "required": [],
+        },
+    ),
 ]
 
 
@@ -1126,6 +1185,28 @@ async def dispatch_tool(
 
     if name == "list_mounts":
         return await files.list_mounts(client)
+
+    # Phase 5 tools - Storage Management
+    if name == "list_disks":
+        return await storage.list_disks(client)
+
+    if name == "get_disk_health":
+        device = arguments.get("device")
+        if not device:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: device",
+            )
+        return await storage.get_disk_health(client, device)
+
+    if name == "list_volume_groups":
+        return await storage.list_volume_groups(client)
+
+    if name == "list_logical_volumes":
+        return await storage.list_logical_volumes(
+            client,
+            volume_group=arguments.get("volume_group"),
+        )
 
     # Unknown tool
     return ToolResult.fail(

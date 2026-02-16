@@ -6,10 +6,13 @@ manage Linux systems via Webmin's web-based administration interface.
 ## Features
 
 - **System Monitoring**: Comprehensive system info, memory, disk, and network status
-- **Service Management**: List services and check their status
-- **User Administration**: List and inspect system users
-- **Scheduled Tasks**: View cron jobs and schedules
+- **Service Management**: List, start, stop, restart, enable, and disable services
+- **User Administration**: List, create, modify, and delete system users
+- **Scheduled Tasks**: View, create, edit, and delete cron jobs
 - **Network Configuration**: Interface details, routing, and gateway info
+- **Package Management**: Package info and available updates
+- **File Operations**: Read, write, copy, rename, and delete files
+- **Storage Management**: SMART disk health monitoring and LVM volume management
 
 ## Requirements
 
@@ -948,6 +951,137 @@ List all mounted filesystems.
         "device": "/dev/sda1",
         "type": "ext4",
         "options": "rw,relatime"
+      }
+    ]
+  }
+}
+```
+
+### `list_disks`
+
+List all physical disks with SMART capability.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 2,
+    "disks": [
+      {
+        "device": "/dev/sda",
+        "model": "Samsung SSD 870",
+        "serial": "S5XXNX0T123456",
+        "capacity": "500GB",
+        "smart_enabled": true,
+        "type": "sata"
+      }
+    ]
+  }
+}
+```
+
+### `get_disk_health`
+
+Get SMART health status for a specific disk.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `device` | string | Yes | Device path (e.g., "/dev/sda") |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "device": "/dev/sda",
+    "health": "PASSED",
+    "healthy": true,
+    "model": "Samsung SSD 870",
+    "serial": "S5XXNX0T123456",
+    "firmware": "SVT04B6Q",
+    "temperature": 35,
+    "power_on_hours": 1234,
+    "power_cycles": 567,
+    "attributes": [
+      {
+        "id": 5,
+        "name": "Reallocated_Sector_Ct",
+        "value": 100,
+        "worst": 100,
+        "threshold": 10,
+        "raw": 0,
+        "type": "pre-fail",
+        "failed": false
+      }
+    ],
+    "failed_attributes": [],
+    "errors": [],
+    "error_count": 0
+  }
+}
+```
+
+### `list_volume_groups`
+
+List all LVM volume groups.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 1,
+    "volume_groups": [
+      {
+        "name": "vg_data",
+        "size_bytes": 107374182400,
+        "size_mb": 102400.0,
+        "free_bytes": 53687091200,
+        "free_mb": 51200.0,
+        "pv_count": 2,
+        "lv_count": 3,
+        "extent_size": 4194304,
+        "extent_count": 25600,
+        "free_extents": 12800
+      }
+    ]
+  }
+}
+```
+
+### `list_logical_volumes`
+
+List all LVM logical volumes.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `volume_group` | string | No | Filter by volume group name |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 2,
+    "volume_group": null,
+    "logical_volumes": [
+      {
+        "name": "lv_root",
+        "volume_group": "vg_system",
+        "size_bytes": 21474836480,
+        "size_mb": 20480.0,
+        "device": "/dev/vg_system/lv_root",
+        "active": true,
+        "mounted": "/",
+        "stripes": 1,
+        "stripe_size": null
       }
     ]
   }
