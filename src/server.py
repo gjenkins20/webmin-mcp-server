@@ -15,7 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
-from .tools import cron, packages, services, system, users
+from .tools import cron, files, packages, services, system, users
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -558,6 +558,157 @@ TOOLS = [
             "required": [],
         },
     ),
+    # Phase 4: File Management Tools
+    Tool(
+        name="read_file",
+        description=(
+            "Read the contents of a file from the remote system. "
+            "Can return content as a string or as an array of lines."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Absolute path to the file to read",
+                },
+                "as_lines": {
+                    "type": "boolean",
+                    "description": "If true, return content as array of lines",
+                    "default": False,
+                },
+            },
+            "required": ["path"],
+        },
+    ),
+    Tool(
+        name="write_file",
+        description=(
+            "Write content to a file. This is a dangerous operation. "
+            "In safe mode, only writes to /tmp and /var/tmp are allowed. "
+            "System directories (/etc, /bin, /usr, etc.) are always blocked."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Absolute path to the file to write",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Content to write to the file",
+                },
+            },
+            "required": ["path", "content"],
+        },
+    ),
+    Tool(
+        name="delete_file",
+        description=(
+            "Delete a file or empty directory. This is a dangerous operation. "
+            "In safe mode, only deletes in /tmp and /var/tmp are allowed. "
+            "System directories are always protected."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Absolute path to the file or directory to delete",
+                },
+            },
+            "required": ["path"],
+        },
+    ),
+    Tool(
+        name="copy_file",
+        description=(
+            "Copy a file to a new location. In safe mode, destination must be "
+            "in /tmp or /var/tmp."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "description": "Absolute path to the source file",
+                },
+                "destination": {
+                    "type": "string",
+                    "description": "Absolute path to the destination",
+                },
+            },
+            "required": ["source", "destination"],
+        },
+    ),
+    Tool(
+        name="rename_file",
+        description=(
+            "Rename or move a file. In safe mode, both source and destination "
+            "must be in /tmp or /var/tmp."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "description": "Absolute path to the source file",
+                },
+                "destination": {
+                    "type": "string",
+                    "description": "Absolute path to the new location/name",
+                },
+            },
+            "required": ["source", "destination"],
+        },
+    ),
+    Tool(
+        name="create_directory",
+        description=(
+            "Create a new directory. In safe mode, only directories in "
+            "/tmp or /var/tmp can be created."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Absolute path to the directory to create",
+                },
+                "mode": {
+                    "type": "integer",
+                    "description": "Permission mode (e.g., 755)",
+                    "default": 755,
+                },
+            },
+            "required": ["path"],
+        },
+    ),
+    Tool(
+        name="list_processes",
+        description=(
+            "List all running processes on the system. Shows PID, user, "
+            "CPU usage, memory, and command for each process."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_mounts",
+        description=(
+            "List all mounted filesystems. Shows mount point, device, "
+            "filesystem type, and mount options."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
 ]
 
 
@@ -868,6 +1019,113 @@ async def dispatch_tool(
 
     if name == "get_package_count":
         return await packages.get_package_count(client)
+
+    # Phase 4 tools - File Management
+    if name == "read_file":
+        path = arguments.get("path")
+        if not path:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: path",
+            )
+        return await files.read_file(
+            client,
+            path=path,
+            as_lines=arguments.get("as_lines", False),
+        )
+
+    if name == "write_file":
+        path = arguments.get("path")
+        content = arguments.get("content")
+        if not path:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: path",
+            )
+        if content is None:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: content",
+            )
+        return await files.write_file(
+            client,
+            path=path,
+            content=content,
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "delete_file":
+        path = arguments.get("path")
+        if not path:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: path",
+            )
+        return await files.delete_file(
+            client,
+            path=path,
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "copy_file":
+        source = arguments.get("source")
+        destination = arguments.get("destination")
+        if not source:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: source",
+            )
+        if not destination:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: destination",
+            )
+        return await files.copy_file(
+            client,
+            source=source,
+            destination=destination,
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "rename_file":
+        source = arguments.get("source")
+        destination = arguments.get("destination")
+        if not source:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: source",
+            )
+        if not destination:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: destination",
+            )
+        return await files.rename_file(
+            client,
+            source=source,
+            destination=destination,
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "create_directory":
+        path = arguments.get("path")
+        if not path:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: path",
+            )
+        return await files.create_directory(
+            client,
+            path=path,
+            mode=arguments.get("mode", 755),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "list_processes":
+        return await files.list_processes(client)
+
+    if name == "list_mounts":
+        return await files.list_mounts(client)
 
     # Unknown tool
     return ToolResult.fail(

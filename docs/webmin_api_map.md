@@ -298,6 +298,140 @@ They require CGI form submissions and are not implemented in this MCP server.
 
 ---
 
+## Module: webmin (File Operations)
+
+### read_file_contents
+
+Read file contents as a string.
+
+- **Method:** `webmin::read_file_contents`
+- **Arguments:** `path` (string) — absolute file path
+- **Returns:** String with file contents
+- **Example:**
+  ```python
+  content = await client.call("webmin", "read_file_contents", "/etc/hostname")
+  # Returns: "server.example.com\n"
+  ```
+
+### read_file_lines
+
+Read file contents as array of lines.
+
+- **Method:** `webmin::read_file_lines`
+- **Arguments:** `path` (string) — absolute file path
+- **Returns:** List of strings (lines)
+- **Example:**
+  ```python
+  lines = await client.call("webmin", "read_file_lines", "/etc/hosts")
+  # Returns: ["127.0.0.1 localhost", "::1 localhost", ...]
+  ```
+
+### write_file_contents
+
+Write content to a file.
+
+- **Method:** `webmin::write_file_contents`
+- **Arguments:** `path` (string), `content` (string)
+- **Returns:** Integer (1 on success)
+- **Safety Tier:** Dangerous
+- **Example:**
+  ```python
+  result = await client.call("webmin", "write_file_contents", "/tmp/test.txt", "Hello")
+  # Returns: 1
+  ```
+
+### unlink_file
+
+Delete a file or empty directory.
+
+- **Method:** `webmin::unlink_file`
+- **Arguments:** `path` (string)
+- **Returns:** List [success (int), error_message (string)]
+- **Safety Tier:** Dangerous
+- **Example:**
+  ```python
+  result = await client.call("webmin", "unlink_file", "/tmp/test.txt")
+  # Returns: [1, ""]
+  ```
+
+### copy_source_dest
+
+Copy a file to a new location.
+
+- **Method:** `webmin::copy_source_dest`
+- **Arguments:** `source` (string), `destination` (string)
+- **Returns:** List [success (int), error_message (string)]
+- **Safety Tier:** Moderate
+- **Example:**
+  ```python
+  result = await client.call("webmin", "copy_source_dest", "/etc/hostname", "/tmp/hostname_copy")
+  # Returns: [1, ""]
+  ```
+
+### rename_file
+
+Rename or move a file.
+
+- **Method:** `webmin::rename_file`
+- **Arguments:** `old_path` (string), `new_path` (string)
+- **Returns:** Integer (1 on success)
+- **Safety Tier:** Moderate
+- **Example:**
+  ```python
+  result = await client.call("webmin", "rename_file", "/tmp/old.txt", "/tmp/new.txt")
+  # Returns: 1
+  ```
+
+### make_dir
+
+Create a new directory.
+
+- **Method:** `webmin::make_dir`
+- **Arguments:** `path` (string), `mode` (int)
+- **Returns:** Integer (1 on success)
+- **Safety Tier:** Moderate
+- **Example:**
+  ```python
+  result = await client.call("webmin", "make_dir", "/tmp/newdir", 755)
+  # Returns: 1
+  ```
+
+---
+
+## Module: proc (Process Management)
+
+### list_processes
+
+List all running processes.
+
+- **Method:** `proc::list_processes`
+- **Arguments:** None
+- **Returns:** List of process dictionaries with keys: `pid`, `ppid`, `user`, `cpu`, `size`, `bytes`, `time`, `args`, `nice`, `_tty`
+- **Example:**
+  ```python
+  processes = await client.call("proc", "list_processes")
+  # Returns: [{"pid": 1, "user": "root", "args": "/sbin/init", ...}, ...]
+  ```
+
+---
+
+## Module: mount (Filesystem Management)
+
+### list_mounted
+
+List all mounted filesystems.
+
+- **Method:** `mount::list_mounted`
+- **Arguments:** None
+- **Returns:** List of lists: [mount_point, device, type, options]
+- **Example:**
+  ```python
+  mounts = await client.call("mount", "list_mounted")
+  # Returns: [["/", "/dev/sda1", "ext4", "rw,relatime"], ...]
+  ```
+
+---
+
 ## CGI Fallback Endpoints
 
 For modules with limited XML-RPC support, use direct CGI requests.
@@ -371,5 +505,5 @@ The following endpoints will be documented as features are implemented:
 
 ---
 
-Document Version: 1.2
+Document Version: 1.3
 Last Updated: February 16, 2026

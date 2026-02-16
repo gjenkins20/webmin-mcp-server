@@ -756,6 +756,204 @@ Get the total count of installed packages.
 }
 ```
 
+### `read_file`
+
+Read the contents of a file from the remote system.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Absolute path to the file |
+| `as_lines` | boolean | No | If true, return as array of lines (default: false) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "path": "/etc/hostname",
+    "content": "server.example.com\n",
+    "size": 20
+  }
+}
+```
+
+### `write_file`
+
+Write content to a file. **Dangerous operation.** In safe mode, only writes to `/tmp` and `/var/tmp` are allowed. System directories are always blocked.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Absolute path to the file |
+| `content` | string | Yes | Content to write |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "write",
+    "path": "/tmp/test.txt",
+    "success": true,
+    "bytes_written": 13
+  }
+}
+```
+
+### `delete_file`
+
+Delete a file or empty directory. **Dangerous operation.** In safe mode, only deletes in `/tmp` and `/var/tmp` are allowed.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Absolute path to delete |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "delete",
+    "path": "/tmp/old.txt",
+    "success": true
+  }
+}
+```
+
+### `copy_file`
+
+Copy a file to a new location. In safe mode, destination must be in `/tmp` or `/var/tmp`.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `source` | string | Yes | Absolute path to source file |
+| `destination` | string | Yes | Absolute path to destination |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "copy",
+    "source": "/etc/hostname",
+    "destination": "/tmp/hostname_backup",
+    "success": true
+  }
+}
+```
+
+### `rename_file`
+
+Rename or move a file. In safe mode, both paths must be in `/tmp` or `/var/tmp`.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `source` | string | Yes | Absolute path to source |
+| `destination` | string | Yes | Absolute path to new location |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "rename",
+    "source": "/tmp/old.txt",
+    "destination": "/tmp/new.txt",
+    "success": true
+  }
+}
+```
+
+### `create_directory`
+
+Create a new directory. In safe mode, only directories in `/tmp` or `/var/tmp` can be created.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | Yes | Absolute path to create |
+| `mode` | integer | No | Permission mode (default: 755) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "create_directory",
+    "path": "/tmp/newdir",
+    "mode": 755,
+    "success": true
+  }
+}
+```
+
+### `list_processes`
+
+List all running processes on the system.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 150,
+    "processes": [
+      {
+        "pid": 1,
+        "ppid": 0,
+        "user": "root",
+        "cpu": "0.1 %",
+        "memory": "1024 kB",
+        "memory_bytes": 1048576,
+        "time": "00:01:00",
+        "command": "/sbin/init",
+        "nice": 0,
+        "tty": "None"
+      }
+    ]
+  }
+}
+```
+
+### `list_mounts`
+
+List all mounted filesystems.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_count": 15,
+    "real_filesystem_count": 3,
+    "mounts": [
+      {
+        "mount_point": "/",
+        "device": "/dev/sda1",
+        "type": "ext4",
+        "options": "rw,relatime"
+      }
+    ],
+    "real_filesystems": [
+      {
+        "mount_point": "/",
+        "device": "/dev/sda1",
+        "type": "ext4",
+        "options": "rw,relatime"
+      }
+    ]
+  }
+}
+```
+
 ## Safety Framework
 
 The server includes a safety framework to prevent dangerous operations:
@@ -781,12 +979,20 @@ Critical system users that cannot be deleted:
 - `root`, `daemon`, `bin`, `sys`, `sync`, `nobody`
 - `systemd-network`, `systemd-resolve`
 
+### Protected Paths
+
+File operations are blocked for critical system directories:
+- `/etc`, `/bin`, `/sbin`, `/usr`, `/boot`, `/lib*`
+- `/root`, `/proc`, `/sys`, `/dev`
+- Files matching patterns: `.bashrc`, `.ssh`, `passwd`, `shadow`, `sudoers`
+
 ### Safe Mode
 
 Safe mode is enabled by default (`WEBMIN_SAFE_MODE=true`). In safe mode:
 - Dangerous operations are blocked (user creation/deletion, password changes, cron deletion)
 - Critical services cannot be restarted
 - Some services can only be restarted (not stopped)
+- File writes/deletes only allowed in `/tmp` and `/var/tmp`
 
 To disable safe mode:
 ```bash
