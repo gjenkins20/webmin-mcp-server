@@ -60,6 +60,12 @@ class WebminConfig(BaseSettings):
         gt=0,
     )
 
+    # Safety settings
+    safe_mode: bool = Field(
+        default=True,
+        description="Enable safe mode to block dangerous operations",
+    )
+
     @property
     def base_url(self) -> str:
         """Construct the base URL for the Webmin server."""

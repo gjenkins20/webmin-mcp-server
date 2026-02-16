@@ -15,7 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
-from .tools import system
+from .tools import services, system
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -176,6 +176,92 @@ TOOLS = [
             "required": [],
         },
     ),
+    # Phase 2: Service Management Tools
+    Tool(
+        name="restart_service",
+        description=(
+            "Restart a system service. The service will be stopped and then "
+            "started again. Some critical services (ssh, webmin) may be blocked "
+            "in safe mode."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service to restart (e.g., 'nginx', 'cron')",
+                },
+            },
+            "required": ["service"],
+        },
+    ),
+    Tool(
+        name="start_service",
+        description=(
+            "Start a stopped system service. If the service is already running, "
+            "this is a no-op."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service to start",
+                },
+            },
+            "required": ["service"],
+        },
+    ),
+    Tool(
+        name="stop_service",
+        description=(
+            "Stop a running system service. Critical services (ssh, webmin, "
+            "systemd services) are blocked to prevent system lockout."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service to stop",
+                },
+            },
+            "required": ["service"],
+        },
+    ),
+    Tool(
+        name="enable_service",
+        description=(
+            "Enable a service to start automatically at system boot."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service to enable at boot",
+                },
+            },
+            "required": ["service"],
+        },
+    ),
+    Tool(
+        name="disable_service",
+        description=(
+            "Disable a service from starting automatically at system boot. "
+            "Critical services are blocked to prevent boot failures."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service to disable at boot",
+                },
+            },
+            "required": ["service"],
+        },
+    ),
 ]
 
 
@@ -216,7 +302,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # Execute tool
     try:
         async with get_client(config) as client:
-            result = await dispatch_tool(client, name, arguments)
+            result = await dispatch_tool(client, name, arguments, config)
             return format_result(result)
 
     except WebminAuthError as e:
@@ -240,6 +326,7 @@ async def dispatch_tool(
     client: WebminClient,
     name: str,
     arguments: dict[str, Any],
+    config: WebminConfig,
 ) -> ToolResult:
     """Dispatch a tool call to the appropriate handler.
 
@@ -247,6 +334,7 @@ async def dispatch_tool(
         client: Authenticated WebminClient.
         name: Tool name.
         arguments: Tool arguments.
+        config: Webmin configuration (for safety settings).
 
     Returns:
         ToolResult from the tool handler.
@@ -289,6 +377,52 @@ async def dispatch_tool(
 
     if name == "get_network_info":
         return await system.get_network_info(client)
+
+    # Phase 2 tools - Service Management
+    if name == "restart_service":
+        service = arguments.get("service")
+        if not service:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: service",
+            )
+        return await services.restart_service(client, service, config.safe_mode)
+
+    if name == "start_service":
+        service = arguments.get("service")
+        if not service:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: service",
+            )
+        return await services.start_service(client, service, config.safe_mode)
+
+    if name == "stop_service":
+        service = arguments.get("service")
+        if not service:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: service",
+            )
+        return await services.stop_service(client, service, config.safe_mode)
+
+    if name == "enable_service":
+        service = arguments.get("service")
+        if not service:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: service",
+            )
+        return await services.enable_service(client, service, config.safe_mode)
+
+    if name == "disable_service":
+        service = arguments.get("service")
+        if not service:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: service",
+            )
+        return await services.disable_service(client, service, config.safe_mode)
 
     # Unknown tool
     return ToolResult.fail(

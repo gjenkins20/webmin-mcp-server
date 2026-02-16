@@ -91,7 +91,7 @@ class TestGetServiceStatus:
 
     async def test_get_service_status_running(self, mock_client: AsyncMock) -> None:
         """Test service status when running."""
-        mock_client.call.return_value = 0  # 0 = running
+        mock_client.call.return_value = 1  # 1 = running
 
         result = await system.get_service_status(mock_client, "sshd")
 
@@ -102,7 +102,7 @@ class TestGetServiceStatus:
 
     async def test_get_service_status_stopped(self, mock_client: AsyncMock) -> None:
         """Test service status when stopped."""
-        mock_client.call.return_value = 1  # 1 = stopped
+        mock_client.call.return_value = 0  # 0 = stopped
 
         result = await system.get_service_status(mock_client, "nginx")
 

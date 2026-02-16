@@ -139,10 +139,10 @@ async def get_service_status(client: WebminClient, service: str) -> ToolResult:
     try:
         status_code = await client.call("init", "status_action", service)
 
-        # Status codes: 0 = running, 1 = stopped (based on testing)
+        # Status codes: 0 = stopped, 1 = running (verified against live system)
         status_map = {
-            0: "running",
-            1: "stopped",
+            0: "stopped",
+            1: "running",
         }
         status = status_map.get(status_code, f"unknown ({status_code})")
 
@@ -150,7 +150,7 @@ async def get_service_status(client: WebminClient, service: str) -> ToolResult:
             "service": service,
             "status": status,
             "status_code": status_code,
-            "running": status_code == 0,
+            "running": status_code == 1,
         })
 
     except Exception as e:

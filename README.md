@@ -313,6 +313,156 @@ Get network interface and routing information.
     "default_gateway": "192.168.1.1"
   }
 }
+```
+
+### `restart_service`
+
+Restart a system service. Some critical services may be blocked in safe mode.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `service` | string | Yes | Name of the service to restart |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "service": "nginx",
+    "action": "restart",
+    "success": true,
+    "running": true,
+    "status_before": "running",
+    "status_after": "running"
+  }
+}
+```
+
+### `start_service`
+
+Start a stopped system service.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `service` | string | Yes | Name of the service to start |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "service": "nginx",
+    "action": "start",
+    "success": true,
+    "running": true,
+    "status_before": "stopped",
+    "status_after": "running"
+  }
+}
+```
+
+### `stop_service`
+
+Stop a running system service. Critical services (ssh, webmin, systemd) are blocked.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `service` | string | Yes | Name of the service to stop |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "service": "nginx",
+    "action": "stop",
+    "success": true,
+    "running": false,
+    "status_before": "running",
+    "status_after": "stopped"
+  }
+}
+```
+
+### `enable_service`
+
+Enable a service to start automatically at boot.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `service` | string | Yes | Name of the service to enable |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "service": "nginx",
+    "action": "enable",
+    "success": true,
+    "enabled_at_boot": true,
+    "was_enabled": false
+  }
+}
+```
+
+### `disable_service`
+
+Disable a service from starting at boot. Critical services are blocked.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `service` | string | Yes | Name of the service to disable |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "service": "nginx",
+    "action": "disable",
+    "success": true,
+    "enabled_at_boot": false,
+    "was_enabled": true
+  }
+}
+```
+
+## Safety Framework
+
+The server includes a safety framework to prevent dangerous operations:
+
+### Safety Tiers
+
+- **Read**: No system changes (always allowed)
+- **Safe**: Low-risk changes (allowed in safe mode)
+- **Moderate**: Reversible changes (may be blocked for critical services)
+- **Dangerous**: Potentially destructive (blocked in safe mode)
+
+### Blocked Services
+
+Critical services that cannot be stopped or disabled:
+- `ssh`, `sshd` - Remote access
+- `webmin` - Webmin itself
+- `systemd-*` - Core system services
+- `dbus`, `networking`
+
+### Safe Mode
+
+Safe mode is enabled by default (`WEBMIN_SAFE_MODE=true`). In safe mode:
+- Dangerous operations are blocked
+- Critical services cannot be restarted
+- Some services can only be restarted (not stopped)
+
+To disable safe mode:
+```bash
+export WEBMIN_SAFE_MODE=false
+```
 
 ## Development
 
