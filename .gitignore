@@ -59,3 +59,12 @@ Thumbs.db
 
 # Project specific
 *.log
+
+# Internal development files (not for public repo)
+CLAUDE.md
+CLAUDE.md.old
+agents/
+docs/project_plan.md
+docs/qa_review.md
+docs/task_tracker.md
+.claude/
