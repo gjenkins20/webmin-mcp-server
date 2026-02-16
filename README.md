@@ -5,6 +5,7 @@ manage Linux systems via Webmin's web-based administration interface.
 
 ## Features
 
+- **Multi-Server Support**: Manage multiple Webmin servers with user-friendly aliases
 - **System Monitoring**: Comprehensive system info, memory, disk, and network status
 - **Service Management**: List, start, stop, restart, enable, and disable services
 - **User Administration**: List, create, modify, and delete system users
@@ -52,7 +53,48 @@ pip install -e ".[dev]"
 
 ## Configuration
 
-Set the following environment variables:
+### Multi-Server Configuration (Recommended)
+
+Create a `webmin-servers.json` file to manage multiple Webmin servers:
+
+```json
+{
+  "default_server": "pi1",
+  "servers": {
+    "pi1": {
+      "host": "192.168.1.100",
+      "port": 10000,
+      "username": "admin",
+      "password": "your-password",
+      "use_https": true,
+      "verify_ssl": false,
+      "safe_mode": true
+    },
+    "web-server": {
+      "host": "192.168.1.50",
+      "port": 10000,
+      "username": "webmin",
+      "password": "another-password",
+      "use_https": true,
+      "verify_ssl": false,
+      "safe_mode": true
+    }
+  }
+}
+```
+
+See `webmin-servers.example.json` for a complete example.
+
+**Configuration sources (priority order):**
+1. `WEBMIN_CONFIG_FILE` env var - path to JSON config file
+2. `WEBMIN_SERVERS_JSON` env var - inline JSON string
+3. `./webmin-servers.json` - local file in current directory
+4. `~/.config/webmin-mcp/servers.json` - user config directory
+5. Legacy `WEBMIN_*` env vars - single server (creates "default" alias)
+
+### Single Server Configuration (Legacy)
+
+For a single server, set environment variables:
 
 ```bash
 export WEBMIN_HOST="your-webmin-server.com"
@@ -71,6 +113,23 @@ Or create a `.env` file (see `.env.example`).
 
 Add to your Claude Desktop configuration (`claude_desktop_config.json`):
 
+**Multi-server setup (using config file):**
+```json
+{
+  "mcpServers": {
+    "webmin": {
+      "command": "python",
+      "args": ["-m", "src.server"],
+      "cwd": "/path/to/webmin-mcp-server",
+      "env": {
+        "WEBMIN_CONFIG_FILE": "/path/to/webmin-servers.json"
+      }
+    }
+  }
+}
+```
+
+**Single-server setup (using env vars):**
 ```json
 {
   "mcpServers": {
@@ -94,13 +153,85 @@ Add to your Claude Desktop configuration (`claude_desktop_config.json`):
 python -m src.server
 ```
 
+### Using Multiple Servers
+
+With multi-server configuration, all tools accept an optional `server` parameter:
+
+```
+"Get system info from pi1"           -> Uses pi1 (default)
+"Check disk usage on web-server"     -> Uses web-server
+"List services on server: nas"       -> Uses nas
+```
+
+Use `list_webmin_servers` to see all configured servers and their aliases.
+
 ## Available Tools
+
+All tools (except `list_webmin_servers`) accept an optional `server` parameter to specify which Webmin server to use. If not specified, the default server is used.
+
+### `list_webmin_servers`
+
+List all configured Webmin servers with their aliases and status.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "servers": [
+      {
+        "alias": "pi1",
+        "host": "192.168.1.100",
+        "port": 10000,
+        "is_default": true,
+        "safe_mode": true
+      },
+      {
+        "alias": "web-server",
+        "host": "192.168.1.50",
+        "port": 10000,
+        "is_default": false,
+        "safe_mode": true
+      }
+    ],
+    "count": 2
+  }
+}
+```
+
+### `test_server_connection`
+
+Test connectivity to a specific Webmin server.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `server` | string | No | Server alias to test (uses default if not specified) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "server": "pi1",
+    "reachable": true,
+    "webmin_version": "2.105",
+    "hostname": "raspberrypi",
+    "response_time_ms": 125
+  }
+}
+```
 
 ### `get_webmin_version`
 
 Get the version of the connected Webmin server.
 
-**Parameters:** None
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `server` | string | No | Server alias (uses default if not specified) |
 
 **Returns:**
 ```json
@@ -1380,13 +1511,23 @@ File operations are blocked for critical system directories:
 
 ### Safe Mode
 
-Safe mode is enabled by default (`WEBMIN_SAFE_MODE=true`). In safe mode:
+Safe mode is enabled by default for each server. In safe mode:
 - Dangerous operations are blocked (user creation/deletion, password changes, cron deletion)
 - Critical services cannot be restarted
 - Some services can only be restarted (not stopped)
 - File writes/deletes only allowed in `/tmp` and `/var/tmp`
 
-To disable safe mode:
+**Per-server safe mode (multi-server config):**
+```json
+{
+  "servers": {
+    "production": { "safe_mode": true, ... },
+    "development": { "safe_mode": false, ... }
+  }
+}
+```
+
+**Global safe mode (single-server):**
 ```bash
 export WEBMIN_SAFE_MODE=false
 ```
@@ -1424,10 +1565,8 @@ webmin-mcp-server/
 │   └── tools/            # MCP tool implementations
 ├── tests/                # Test suite
 ├── docs/                 # Documentation
-│   ├── task_tracker.md   # Project task tracking
-│   ├── webmin_api_map.md # Webmin API documentation
-│   └── qa_review.md      # QA review log
-└── agents/               # Agent team prompts
+│   └── webmin_api_map.md # Webmin API documentation
+└── webmin-servers.example.json  # Example multi-server config
 ```
 
 ## License

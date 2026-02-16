@@ -53,6 +53,9 @@ dmypy.json
 .env.local
 .env.*.local
 
+# Multi-server config (contains credentials)
+webmin-servers.json
+
 # OS
 .DS_Store
 Thumbs.db

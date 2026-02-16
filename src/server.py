@@ -1,7 +1,7 @@
 """MCP Server for Webmin system administration.
 
 This module sets up the MCP server and registers all available tools
-for managing Linux systems via Webmin.
+for managing Linux systems via Webmin. Supports multiple Webmin servers.
 """
 
 import asyncio
@@ -13,7 +13,14 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from .config import WebminConfig, get_server_config, get_webmin_config
+from .config import (
+    MultiServerConfig,
+    ServerEntry,
+    WebminConfig,
+    get_server_config,
+    load_multi_server_config,
+    reset_config_cache,
+)
 from .models import ToolResult
 from .tools import admin, cron, database, files, packages, security, services, storage, system, users
 from .webmin_client import (
@@ -59,8 +66,45 @@ def format_result(result: ToolResult) -> list[TextContent]:
     return [TextContent(type="text", text=result.model_dump_json(indent=2))]
 
 
-# Tool definitions for Phase 1
+# Common server parameter for all tools
+SERVER_PARAM = {
+    "server": {
+        "type": "string",
+        "description": "Server alias (e.g., 'pi1', 'web-server'). Uses default server if not specified.",
+    }
+}
+
+
+# Tool definitions
 TOOLS = [
+    # Management tools for multi-server support
+    Tool(
+        name="list_webmin_servers",
+        description=(
+            "List all configured Webmin servers with their aliases and connection info. "
+            "Shows which server is the default."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="test_server_connection",
+        description=(
+            "Test connectivity to a specific Webmin server. "
+            "Returns version and hostname if successful."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+            },
+            "required": [],
+        },
+    ),
+    # Phase 0-1: Core system tools
     Tool(
         name="get_webmin_version",
         description=(
@@ -69,7 +113,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -82,7 +126,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -95,7 +139,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -108,6 +152,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "service": {
                     "type": "string",
                     "description": "Name of the service (e.g., 'sshd', 'nginx', 'cron')",
@@ -124,7 +169,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -136,7 +181,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -148,7 +193,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -160,7 +205,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -172,7 +217,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -187,6 +232,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "service": {
                     "type": "string",
                     "description": "Name of the service to restart (e.g., 'nginx', 'cron')",
@@ -204,6 +250,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "service": {
                     "type": "string",
                     "description": "Name of the service to start",
@@ -221,6 +268,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "service": {
                     "type": "string",
                     "description": "Name of the service to stop",
@@ -237,6 +285,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "service": {
                     "type": "string",
                     "description": "Name of the service to enable at boot",
@@ -254,6 +303,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "service": {
                     "type": "string",
                     "description": "Name of the service to disable at boot",
@@ -273,6 +323,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "command": {
                     "type": "string",
                     "description": "Command to execute",
@@ -325,6 +376,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "index": {
                     "type": "integer",
                     "description": "Index of the job to edit (from list_cron_jobs)",
@@ -374,6 +426,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "index": {
                     "type": "integer",
                     "description": "Index of the job to delete (from list_cron_jobs)",
@@ -391,7 +444,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -404,6 +457,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "username": {
                     "type": "string",
                     "description": "Username (lowercase letters, digits, underscores, hyphens)",
@@ -445,6 +499,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "username": {
                     "type": "string",
                     "description": "Username of the user to delete",
@@ -466,6 +521,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "username": {
                     "type": "string",
                     "description": "Current username of the user to modify",
@@ -507,6 +563,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "username": {
                     "type": "string",
                     "description": "Username of the user",
@@ -529,6 +586,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "package_name": {
                     "type": "string",
                     "description": "Name of the package to query",
@@ -545,7 +603,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -554,7 +612,7 @@ TOOLS = [
         description="Get the total count of installed packages on the system.",
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -568,6 +626,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "path": {
                     "type": "string",
                     "description": "Absolute path to the file to read",
@@ -591,6 +650,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "path": {
                     "type": "string",
                     "description": "Absolute path to the file to write",
@@ -613,6 +673,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "path": {
                     "type": "string",
                     "description": "Absolute path to the file or directory to delete",
@@ -630,6 +691,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "source": {
                     "type": "string",
                     "description": "Absolute path to the source file",
@@ -651,6 +713,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "source": {
                     "type": "string",
                     "description": "Absolute path to the source file",
@@ -672,6 +735,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "path": {
                     "type": "string",
                     "description": "Absolute path to the directory to create",
@@ -693,7 +757,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -705,7 +769,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -718,7 +782,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -731,6 +795,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "device": {
                     "type": "string",
                     "description": "Device path (e.g., '/dev/sda', '/dev/nvme0n1')",
@@ -747,7 +812,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -760,6 +825,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "volume_group": {
                     "type": "string",
                     "description": "Optional volume group name to filter by",
@@ -776,7 +842,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -787,7 +853,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -799,7 +865,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -813,6 +879,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "limit": {
                     "type": "integer",
                     "description": "Maximum number of log entries to return (default: 100)",
@@ -837,7 +904,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -850,7 +917,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -863,6 +930,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "jail": {
                     "type": "string",
                     "description": "Jail name for specific status (optional)",
@@ -879,6 +947,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "jail": {
                     "type": "string",
                     "description": "Filter by jail name (optional)",
@@ -896,7 +965,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -907,7 +976,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -919,7 +988,7 @@ TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {**SERVER_PARAM},
             "required": [],
         },
     ),
@@ -934,53 +1003,96 @@ async def list_tools() -> list[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-    """Handle tool calls.
+    """Handle tool calls with multi-server support.
 
     Args:
         name: Name of the tool to call.
-        arguments: Tool arguments.
+        arguments: Tool arguments (may include 'server' for multi-server).
 
     Returns:
         Tool result as TextContent.
     """
     logger.debug("Tool call: %s with args: %s", name, arguments)
 
-    # Get configuration
+    # Handle management tools that don't need a server connection
+    if name == "list_webmin_servers":
+        try:
+            config = load_multi_server_config()
+            return format_result(ToolResult.ok({
+                "servers": config.list_servers(),
+                "count": len(config.servers),
+            }))
+        except Exception as e:
+            return format_result(ToolResult.fail(
+                code="CONFIG_ERROR",
+                message=f"Failed to load server configuration: {e}",
+            ))
+
+    # Get multi-server configuration
     try:
-        config = get_webmin_config()
+        multi_config = load_multi_server_config()
     except Exception as e:
         logger.error("Configuration error: %s", e)
         return format_result(
             ToolResult.fail(
                 code="CONFIG_ERROR",
                 message="Webmin configuration is missing or invalid. "
-                "Ensure WEBMIN_HOST, WEBMIN_USERNAME, and WEBMIN_PASSWORD "
-                "environment variables are set.",
+                "Either create webmin-servers.json or set WEBMIN_* environment variables.",
                 details={"error": str(e)},
             )
         )
 
+    # Extract server alias from arguments (optional)
+    server_alias = arguments.pop("server", None)
+
+    # Get the specific server config
+    try:
+        alias, server_entry = multi_config.get_server(server_alias)
+    except ValueError as e:
+        return format_result(ToolResult.fail(
+            code="UNKNOWN_SERVER",
+            message=str(e),
+            details={"available_servers": list(multi_config.servers.keys())},
+        ))
+
+    # Convert to WebminConfig for compatibility
+    config = server_entry.to_webmin_config()
+
+    logger.debug("Using server '%s' (%s:%d)", alias, server_entry.host, server_entry.port)
+
     # Execute tool
     try:
         async with get_client(config) as client:
-            result = await dispatch_tool(client, name, arguments, config)
+            result = await dispatch_tool(client, name, arguments, config, alias)
             return format_result(result)
 
     except WebminAuthError as e:
-        logger.error("Authentication error: %s", e)
-        return format_result(ToolResult.fail(code=e.code, message=e.message))
+        logger.error("[%s] Authentication error: %s", alias, e)
+        return format_result(ToolResult.fail(
+            code=e.code,
+            message=f"[{alias}] {e.message}",
+        ))
 
     except WebminConnectionError as e:
-        logger.error("Connection error: %s", e)
-        return format_result(ToolResult.fail(code=e.code, message=e.message))
+        logger.error("[%s] Connection error: %s", alias, e)
+        return format_result(ToolResult.fail(
+            code=e.code,
+            message=f"[{alias}] {e.message}",
+        ))
 
     except WebminRPCError as e:
-        logger.error("RPC error: %s", e)
-        return format_result(ToolResult.fail(code=e.code, message=e.message))
+        logger.error("[%s] RPC error: %s", alias, e)
+        return format_result(ToolResult.fail(
+            code=e.code,
+            message=f"[{alias}] {e.message}",
+        ))
 
     except WebminClientError as e:
-        logger.error("Webmin client error: %s", e)
-        return format_result(ToolResult.fail(code=e.code, message=e.message))
+        logger.error("[%s] Webmin client error: %s", alias, e)
+        return format_result(ToolResult.fail(
+            code=e.code,
+            message=f"[{alias}] {e.message}",
+        ))
 
 
 async def dispatch_tool(
@@ -988,6 +1100,7 @@ async def dispatch_tool(
     name: str,
     arguments: dict[str, Any],
     config: WebminConfig,
+    server_alias: str = "default",
 ) -> ToolResult:
     """Dispatch a tool call to the appropriate handler.
 
@@ -996,14 +1109,17 @@ async def dispatch_tool(
         name: Tool name.
         arguments: Tool arguments.
         config: Webmin configuration (for safety settings).
+        server_alias: Alias of the server being queried.
 
     Returns:
         ToolResult from the tool handler.
     """
     # Phase 0 tools
-    if name == "get_webmin_version":
+    if name == "get_webmin_version" or name == "test_server_connection":
         version_info = await client.get_version()
         return ToolResult.ok({
+            "server": server_alias,
+            "host": config.host,
             "version": version_info.version,
             "hostname": version_info.hostname,
         })
