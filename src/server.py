@@ -7,7 +7,7 @@ for managing Linux systems via Webmin.
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -15,6 +15,7 @@ from mcp.types import TextContent, Tool
 
 from .config import WebminConfig, get_server_config, get_webmin_config
 from .models import ToolResult
+from .tools import system
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -58,56 +59,146 @@ def format_result(result: ToolResult) -> list[TextContent]:
     return [TextContent(type="text", text=result.model_dump_json(indent=2))]
 
 
+# Tool definitions for Phase 1
+TOOLS = [
+    Tool(
+        name="get_webmin_version",
+        description=(
+            "Get the version of the connected Webmin server. "
+            "Returns the version string and hostname."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_system_info",
+        description=(
+            "Get comprehensive system information including OS, kernel, "
+            "CPU, memory, disk usage, and update status. "
+            "This is a good starting point for understanding system state."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_services",
+        description=(
+            "List all system services (systemd units or init scripts). "
+            "Returns service names. Use get_service_status to check "
+            "if a specific service is running."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_service_status",
+        description=(
+            "Get the status of a specific system service. "
+            "Returns whether the service is running or stopped."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service (e.g., 'sshd', 'nginx', 'cron')",
+                },
+            },
+            "required": ["service"],
+        },
+    ),
+    Tool(
+        name="list_users",
+        description=(
+            "List all system users. Returns both regular users (UID >= 1000) "
+            "and system users separately, with details like home directory and shell."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_disk_usage",
+        description=(
+            "Get disk usage information for all mounted filesystems. "
+            "Shows total, used, and free space, plus inode usage."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_memory_usage",
+        description=(
+            "Get memory usage information. Shows total, used, and free memory "
+            "in KB, MB, and GB, plus buffer and cache usage."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_cron_jobs",
+        description=(
+            "List all scheduled cron jobs. Shows the schedule, command, "
+            "user, and whether each job is active."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_network_info",
+        description=(
+            "Get network configuration including all interfaces (with IP, MAC, "
+            "speed), routing table, and default gateway."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+]
+
+
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     """List all available MCP tools."""
-    return [
-        Tool(
-            name="get_webmin_version",
-            description=(
-                "Get the version of the connected Webmin server. "
-                "Returns the version string and optionally the hostname. "
-                "Uses XML-RPC with CGI fallback."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        ),
-    ]
+    return TOOLS
 
 
 @server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls.
 
     Args:
         name: Name of the tool to call.
-        arguments: Tool arguments (may be empty).
+        arguments: Tool arguments.
 
     Returns:
         Tool result as TextContent.
     """
     logger.debug("Tool call: %s with args: %s", name, arguments)
 
-    if name == "get_webmin_version":
-        return await handle_get_webmin_version()
-
-    return format_result(
-        ToolResult.fail(
-            code="UNKNOWN_TOOL",
-            message=f"Unknown tool: {name}",
-        )
-    )
-
-
-async def handle_get_webmin_version() -> list[TextContent]:
-    """Handle the get_webmin_version tool call.
-
-    Returns:
-        Version information or error.
-    """
+    # Get configuration
     try:
         config = get_webmin_config()
     except Exception as e:
@@ -122,49 +213,88 @@ async def handle_get_webmin_version() -> list[TextContent]:
             )
         )
 
+    # Execute tool
     try:
         async with get_client(config) as client:
-            version_info = await client.get_version()
-            return format_result(
-                ToolResult.ok(
-                    {
-                        "version": version_info.version,
-                        "hostname": version_info.hostname,
-                    }
-                )
-            )
+            result = await dispatch_tool(client, name, arguments)
+            return format_result(result)
+
     except WebminAuthError as e:
         logger.error("Authentication error: %s", e)
-        return format_result(
-            ToolResult.fail(
-                code=e.code,
-                message=e.message,
-            )
-        )
+        return format_result(ToolResult.fail(code=e.code, message=e.message))
+
     except WebminConnectionError as e:
         logger.error("Connection error: %s", e)
-        return format_result(
-            ToolResult.fail(
-                code=e.code,
-                message=e.message,
-            )
-        )
+        return format_result(ToolResult.fail(code=e.code, message=e.message))
+
     except WebminRPCError as e:
         logger.error("RPC error: %s", e)
-        return format_result(
-            ToolResult.fail(
-                code=e.code,
-                message=e.message,
-            )
-        )
+        return format_result(ToolResult.fail(code=e.code, message=e.message))
+
     except WebminClientError as e:
         logger.error("Webmin client error: %s", e)
-        return format_result(
-            ToolResult.fail(
-                code=e.code,
-                message=e.message,
+        return format_result(ToolResult.fail(code=e.code, message=e.message))
+
+
+async def dispatch_tool(
+    client: WebminClient,
+    name: str,
+    arguments: dict[str, Any],
+) -> ToolResult:
+    """Dispatch a tool call to the appropriate handler.
+
+    Args:
+        client: Authenticated WebminClient.
+        name: Tool name.
+        arguments: Tool arguments.
+
+    Returns:
+        ToolResult from the tool handler.
+    """
+    # Phase 0 tools
+    if name == "get_webmin_version":
+        version_info = await client.get_version()
+        return ToolResult.ok({
+            "version": version_info.version,
+            "hostname": version_info.hostname,
+        })
+
+    # Phase 1 tools
+    if name == "get_system_info":
+        return await system.get_system_info(client)
+
+    if name == "list_services":
+        return await system.list_services(client)
+
+    if name == "get_service_status":
+        service = arguments.get("service")
+        if not service:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: service",
             )
-        )
+        return await system.get_service_status(client, service)
+
+    if name == "list_users":
+        return await system.list_users(client)
+
+    if name == "get_disk_usage":
+        return await system.get_disk_usage(client)
+
+    if name == "get_memory_usage":
+        return await system.get_memory_usage(client)
+
+    if name == "list_cron_jobs":
+        return await system.list_cron_jobs(client)
+
+    if name == "get_network_info":
+        return await system.get_network_info(client)
+
+    # Unknown tool
+    return ToolResult.fail(
+        code="UNKNOWN_TOOL",
+        message=f"Unknown tool: {name}",
+    )
 
 
 def setup_logging(level: str) -> None:

@@ -49,10 +49,17 @@ class TestWebminConfig:
 
         assert config.base_url == "http://webmin.example.com:8080"
 
-    def test_config_missing_required_fields(self) -> None:
+    def test_config_missing_required_fields(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that missing required fields raise ValidationError."""
+        # Clear any environment variables that might be set
+        monkeypatch.delenv("WEBMIN_HOST", raising=False)
+        monkeypatch.delenv("WEBMIN_USERNAME", raising=False)
+        monkeypatch.delenv("WEBMIN_PASSWORD", raising=False)
+
         with pytest.raises(ValidationError) as exc_info:
-            WebminConfig()  # type: ignore[call-arg]
+            WebminConfig(_env_file=None)  # type: ignore[call-arg]
 
         errors = exc_info.value.errors()
         missing_fields = {e["loc"][0] for e in errors}
