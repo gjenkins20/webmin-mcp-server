@@ -1,23 +1,68 @@
 # Webmin MCP Server
 
-An MCP (Model Context Protocol) server that provides Claude with tools to
-manage Linux systems via Webmin's web-based administration interface.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
+
+An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that provides Claude with tools to manage Linux systems via [Webmin](https://webmin.com)'s administration interface.
 
 ## Features
 
-- **Multi-Server Support**: Manage multiple Webmin servers with user-friendly aliases
-- **System Monitoring**: Comprehensive system info, memory, disk, and network status
-- **Service Management**: List, start, stop, restart, enable, and disable services
-- **User Administration**: List, create, modify, and delete system users
-- **Scheduled Tasks**: View, create, edit, and delete cron jobs
-- **Network Configuration**: Interface details, routing, and gateway info
-- **Package Management**: Package info and available updates
-- **File Operations**: Read, write, copy, rename, and delete files
-- **Storage Management**: SMART disk health monitoring and LVM volume management
-- **System Administration**: Time/timezone, runlevels, SSH configuration
-- **Audit & Logging**: Webmin action logs and configuration backups
-- **Security**: Fail2ban jail status and banned IP management
-- **Database**: MySQL database and user listing, server status
+- **Multi-Server Support** -- Manage multiple Webmin servers with user-friendly aliases
+- **System Monitoring** -- System info, memory, disk, network, and process status
+- **Service Management** -- Start, stop, restart, enable, and disable services
+- **User & Group Administration** -- Create, modify, and delete system users and groups
+- **Scheduled Tasks** -- View, create, edit, and delete cron jobs
+- **Package Management** -- Package info and available updates
+- **File Operations** -- Read, write, copy, rename, and delete remote files
+- **Storage** -- SMART disk health monitoring and LVM volume management
+- **Security** -- Fail2ban jail status and banned IP management
+- **Database** -- MySQL databases, users, and server status
+- **Audit & Backup** -- Webmin action logs, SSH config, and configuration backups
+- **Safety Framework** -- Tiered safety system with safe mode to prevent dangerous operations
+
+## Quick Start
+
+1. **Install:**
+   ```bash
+   git clone https://github.com/gjenkins20/webmin-mcp-server.git
+   cd webmin-mcp-server
+   pip install -e .
+   ```
+
+2. **Configure** -- Create a `webmin-servers.json` (see [Configuration](#configuration)):
+   ```json
+   {
+     "default_server": "my-server",
+     "servers": {
+       "my-server": {
+         "host": "192.168.1.100",
+         "port": 10000,
+         "username": "admin",
+         "password": "your-password",
+         "use_https": true,
+         "verify_ssl": false,
+         "safe_mode": true
+       }
+     }
+   }
+   ```
+
+3. **Add to Claude Desktop** (`claude_desktop_config.json`):
+   ```json
+   {
+     "mcpServers": {
+       "webmin": {
+         "command": "python",
+         "args": ["-m", "src.server"],
+         "cwd": "/path/to/webmin-mcp-server",
+         "env": {
+           "WEBMIN_CONFIG_FILE": "/path/to/webmin-servers.json"
+         }
+       }
+     }
+   }
+   ```
 
 ## Requirements
 
@@ -25,11 +70,11 @@ manage Linux systems via Webmin's web-based administration interface.
 - A running Webmin instance (typically on port 10000)
 - Webmin credentials with appropriate permissions
 
-### Webmin Server Requirements
+### Webmin Server Setup
 
 The MCP server uses Webmin's XML-RPC API. Ensure your Webmin server is configured:
 
-1. **Enable RPC Access**: In Webmin → Webmin Users → (your user) → enable "Can accept RPC calls"
+1. **Enable RPC Access**: In Webmin -> Webmin Users -> (your user) -> enable "Can accept RPC calls"
 2. **Install XML::Parser**: The Perl XML::Parser module must be installed:
    ```bash
    # Debian/Ubuntu
@@ -40,57 +85,18 @@ The MCP server uses Webmin's XML-RPC API. Ensure your Webmin server is configure
    ```
 3. **Module Access**: Grant the user access to required modules (System Status, Bootup and Shutdown, Users and Groups, Scheduled Cron Jobs, Network Configuration)
 
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/webmin-mcp-server.git
-cd webmin-mcp-server
-
-# Install dependencies
-pip install -e ".[dev]"
-```
-
 ## Configuration
 
 ### Multi-Server Configuration (Recommended)
 
-Create a `webmin-servers.json` file to manage multiple Webmin servers:
-
-```json
-{
-  "default_server": "pi1",
-  "servers": {
-    "pi1": {
-      "host": "192.168.1.100",
-      "port": 10000,
-      "username": "admin",
-      "password": "your-password",
-      "use_https": true,
-      "verify_ssl": false,
-      "safe_mode": true
-    },
-    "web-server": {
-      "host": "192.168.1.50",
-      "port": 10000,
-      "username": "webmin",
-      "password": "another-password",
-      "use_https": true,
-      "verify_ssl": false,
-      "safe_mode": true
-    }
-  }
-}
-```
-
-See `webmin-servers.example.json` for a complete example.
+Create a `webmin-servers.json` file to manage multiple Webmin servers. See [`webmin-servers.example.json`](webmin-servers.example.json) for a complete example.
 
 **Configuration sources (priority order):**
-1. `WEBMIN_CONFIG_FILE` env var - path to JSON config file
-2. `WEBMIN_SERVERS_JSON` env var - inline JSON string
-3. `./webmin-servers.json` - local file in current directory
-4. `~/.config/webmin-mcp/servers.json` - user config directory
-5. Legacy `WEBMIN_*` env vars - single server (creates "default" alias)
+1. `WEBMIN_CONFIG_FILE` env var -- path to JSON config file
+2. `WEBMIN_SERVERS_JSON` env var -- inline JSON string
+3. `./webmin-servers.json` -- local file in current directory
+4. `~/.config/webmin-mcp/servers.json` -- user config directory
+5. Legacy `WEBMIN_*` env vars -- single server (creates "default" alias)
 
 ### Single Server Configuration (Legacy)
 
@@ -105,53 +111,7 @@ export WEBMIN_USE_HTTPS="true"
 export WEBMIN_VERIFY_SSL="true"  # Set to false for self-signed certs
 ```
 
-Or create a `.env` file (see `.env.example`).
-
-## Usage
-
-### With Claude Desktop
-
-Add to your Claude Desktop configuration (`claude_desktop_config.json`):
-
-**Multi-server setup (using config file):**
-```json
-{
-  "mcpServers": {
-    "webmin": {
-      "command": "python",
-      "args": ["-m", "src.server"],
-      "cwd": "/path/to/webmin-mcp-server",
-      "env": {
-        "WEBMIN_CONFIG_FILE": "/path/to/webmin-servers.json"
-      }
-    }
-  }
-}
-```
-
-**Single-server setup (using env vars):**
-```json
-{
-  "mcpServers": {
-    "webmin": {
-      "command": "python",
-      "args": ["-m", "src.server"],
-      "cwd": "/path/to/webmin-mcp-server",
-      "env": {
-        "WEBMIN_HOST": "your-webmin-server.com",
-        "WEBMIN_USERNAME": "admin",
-        "WEBMIN_PASSWORD": "your-password"
-      }
-    }
-  }
-}
-```
-
-### Standalone
-
-```bash
-python -m src.server
-```
+Or create a `.env` file (see [`.env.example`](.env.example)).
 
 ### Using Multiple Servers
 
@@ -167,1391 +127,75 @@ Use `list_webmin_servers` to see all configured servers and their aliases.
 
 ## Available Tools
 
-All tools (except `list_webmin_servers`) accept an optional `server` parameter to specify which Webmin server to use. If not specified, the default server is used.
-
-### `list_webmin_servers`
-
-List all configured Webmin servers with their aliases and status.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "servers": [
-      {
-        "alias": "pi1",
-        "host": "192.168.1.100",
-        "port": 10000,
-        "is_default": true,
-        "safe_mode": true
-      },
-      {
-        "alias": "web-server",
-        "host": "192.168.1.50",
-        "port": 10000,
-        "is_default": false,
-        "safe_mode": true
-      }
-    ],
-    "count": 2
-  }
-}
-```
-
-### `test_server_connection`
-
-Test connectivity to a specific Webmin server.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `server` | string | No | Server alias to test (uses default if not specified) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "server": "pi1",
-    "reachable": true,
-    "webmin_version": "2.105",
-    "hostname": "raspberrypi",
-    "response_time_ms": 125
-  }
-}
-```
-
-### `get_webmin_version`
-
-Get the version of the connected Webmin server.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `server` | string | No | Server alias (uses default if not specified) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "version": "2.105",
-    "hostname": "server.example.com"
-  }
-}
-```
-
-### `get_system_info`
-
-Get comprehensive system information including OS, kernel, CPU, memory, and disk usage.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "hostname": "server.example.com",
-    "webmin_version": "2.105",
-    "os": {"type": "linux", "name": "Ubuntu Linux", "version": "24.04"},
-    "kernel": {"os": "Linux", "version": "6.1.0", "arch": "x86_64"},
-    "cpu": {"cores": 4, "model": "ARM Cortex-A72", "load_1min": 0.5},
-    "memory": {"total_kb": 4000000, "used_kb": 2000000, "free_kb": 1400000},
-    "disk": {"total_bytes": 100000000000, "used_bytes": 50000000000},
-    "process_count": 150,
-    "updates_available": 2,
-    "reboot_required": false
-  }
-}
-```
-
-### `list_services`
-
-List all system services (systemd units or init scripts).
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 45,
-    "services": [
-      {"name": "sshd"},
-      {"name": "nginx"},
-      {"name": "cron"}
-    ]
-  }
-}
-```
-
-### `get_service_status`
-
-Get the status of a specific service.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `service` | string | Yes | Name of the service (e.g., "sshd", "nginx") |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "service": "sshd",
-    "status": "running",
-    "status_code": 0,
-    "running": true
-  }
-}
-```
-
-### `list_users`
-
-List all system users, separated into regular users (UID >= 1000) and system users.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_count": 25,
-    "regular_count": 3,
-    "system_count": 22,
-    "regular_users": [
-      {"username": "admin", "uid": 1000, "gid": 1000, "name": "Admin User", "home": "/home/admin", "shell": "/bin/bash"}
-    ],
-    "system_users": [
-      {"username": "root", "uid": 0, "gid": 0, "name": "root", "home": "/root", "shell": "/bin/bash"}
-    ]
-  }
-}
-```
-
-### `get_disk_usage`
-
-Get disk usage information for all mounted filesystems.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_bytes": 100000000000,
-    "used_bytes": 50000000000,
-    "free_bytes": 50000000000,
-    "filesystems": [
-      {
-        "mount_point": "/",
-        "device": "/dev/sda1",
-        "type": "ext4",
-        "total_bytes": 100000000000,
-        "used_bytes": 50000000000,
-        "free_bytes": 50000000000,
-        "used_percent": 50
-      }
-    ]
-  }
-}
-```
-
-### `get_memory_usage`
-
-Get memory usage information in multiple units (KB, MB, GB).
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_kb": 4000000,
-    "total_mb": 3906.3,
-    "total_gb": 3.81,
-    "used_kb": 2000000,
-    "used_mb": 1953.1,
-    "used_percent": 50.0,
-    "free_kb": 1400000,
-    "free_mb": 1367.2,
-    "free_percent": 35.0,
-    "buffers_kb": 100000,
-    "cached_kb": 500000
-  }
-}
-```
-
-### `list_cron_jobs`
-
-List all scheduled cron jobs with their schedules and status.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 5,
-    "jobs": [
-      {
-        "user": "root",
-        "command": "/usr/bin/backup.sh",
-        "schedule": "0 2 * * *",
-        "active": true,
-        "file": "/etc/crontab",
-        "index": 0
-      }
-    ]
-  }
-}
-```
-
-### `get_network_info`
-
-Get network interface and routing information.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "interface_count": 2,
-    "interfaces": [
-      {
-        "name": "eth0",
-        "address": "192.168.1.100",
-        "netmask": "255.255.255.0",
-        "broadcast": "192.168.1.255",
-        "mac": "00:11:22:33:44:55",
-        "mtu": 1500,
-        "up": true
-      }
-    ],
-    "routes": [
-      {
-        "destination": "0.0.0.0",
-        "gateway": "192.168.1.1",
-        "netmask": "0.0.0.0",
-        "interface": "eth0"
-      }
-    ],
-    "default_gateway": "192.168.1.1"
-  }
-}
-```
-
-### `restart_service`
-
-Restart a system service. Some critical services may be blocked in safe mode.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `service` | string | Yes | Name of the service to restart |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "service": "nginx",
-    "action": "restart",
-    "success": true,
-    "running": true,
-    "status_before": "running",
-    "status_after": "running"
-  }
-}
-```
-
-### `start_service`
-
-Start a stopped system service.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `service` | string | Yes | Name of the service to start |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "service": "nginx",
-    "action": "start",
-    "success": true,
-    "running": true,
-    "status_before": "stopped",
-    "status_after": "running"
-  }
-}
-```
-
-### `stop_service`
-
-Stop a running system service. Critical services (ssh, webmin, systemd) are blocked.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `service` | string | Yes | Name of the service to stop |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "service": "nginx",
-    "action": "stop",
-    "success": true,
-    "running": false,
-    "status_before": "running",
-    "status_after": "stopped"
-  }
-}
-```
-
-### `enable_service`
-
-Enable a service to start automatically at boot.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `service` | string | Yes | Name of the service to enable |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "service": "nginx",
-    "action": "enable",
-    "success": true,
-    "enabled_at_boot": true,
-    "was_enabled": false
-  }
-}
-```
-
-### `disable_service`
-
-Disable a service from starting at boot. Critical services are blocked.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `service` | string | Yes | Name of the service to disable |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "service": "nginx",
-    "action": "disable",
-    "success": true,
-    "enabled_at_boot": false,
-    "was_enabled": true
-  }
-}
-```
-
-### `create_cron_job`
-
-Create a new scheduled cron job.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `command` | string | Yes | Command to execute |
-| `minutes` | string | No | Minutes (0-59, *, */N). Default: * |
-| `hours` | string | No | Hours (0-23, *, */N). Default: * |
-| `days` | string | No | Day of month (1-31, *, */N). Default: * |
-| `months` | string | No | Month (1-12, *, */N). Default: * |
-| `weekdays` | string | No | Day of week (0-7, *, 0=Sunday). Default: * |
-| `user` | string | No | User to run as. Default: root |
-| `active` | boolean | No | Whether job is active. Default: true |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "create",
-    "success": true,
-    "job": {
-      "command": "/usr/bin/backup.sh",
-      "schedule": "0 2 * * *",
-      "user": "root",
-      "active": true,
-      "index": 13
-    },
-    "total_jobs": 14
-  }
-}
-```
-
-### `edit_cron_job`
-
-Edit an existing cron job. Only specify fields you want to change.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `index` | integer | Yes | Job index (from list_cron_jobs) |
-| `command` | string | No | New command |
-| `minutes` | string | No | New minutes value |
-| `hours` | string | No | New hours value |
-| `days` | string | No | New days value |
-| `months` | string | No | New months value |
-| `weekdays` | string | No | New weekdays value |
-| `user` | string | No | New user |
-| `active` | boolean | No | New active state |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "edit",
-    "success": true,
-    "job": {
-      "index": 13,
-      "command": "/usr/bin/backup.sh",
-      "schedule": "30 3 * * *",
-      "user": "root",
-      "active": true
-    }
-  }
-}
-```
-
-### `delete_cron_job`
-
-Delete a cron job. **Dangerous operation - blocked in safe mode.**
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `index` | integer | Yes | Job index (from list_cron_jobs) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "delete",
-    "success": true,
-    "deleted_job": {
-      "index": 13,
-      "command": "/usr/bin/backup.sh",
-      "user": "root"
-    },
-    "jobs_before": 14,
-    "jobs_after": 13
-  }
-}
-```
-
-### `list_groups`
-
-List all system groups.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_count": 78,
-    "regular_count": 5,
-    "system_count": 73,
-    "regular_groups": [
-      {"name": "users", "gid": 1000, "members": ["admin"], "member_count": 1}
-    ],
-    "system_groups": [
-      {"name": "root", "gid": 0, "members": [], "member_count": 0}
-    ]
-  }
-}
-```
-
-### `create_user`
-
-Create a new system user. **Dangerous operation - blocked in safe mode.**
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `username` | string | Yes | Username (lowercase, max 32 chars) |
-| `password` | string | Yes | Password for the new user |
-| `real_name` | string | No | Full name/comment |
-| `home_dir` | string | No | Home directory (default: /home/username) |
-| `shell` | string | No | Login shell (default: /bin/bash) |
-| `uid` | integer | No | User ID (auto-assigned if not specified) |
-| `gid` | integer | No | Group ID (auto-assigned if not specified) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "create",
-    "success": true,
-    "user": {
-      "username": "newuser",
-      "uid": 1001,
-      "gid": 1001,
-      "real_name": "New User",
-      "home": "/home/newuser",
-      "shell": "/bin/bash"
-    }
-  }
-}
-```
-
-### `delete_user`
-
-Delete a system user. **Dangerous operation - blocked in safe mode.**
-
-Critical users (root, daemon, bin, nobody, etc.) cannot be deleted.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `username` | string | Yes | Username to delete |
-| `delete_home` | boolean | No | Whether to delete home directory (default: false) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "delete",
-    "success": true,
-    "deleted_user": {
-      "username": "olduser",
-      "uid": 1001,
-      "home": "/home/olduser"
-    },
-    "home_deleted": false
-  }
-}
-```
-
-### `modify_user`
-
-Modify an existing system user. Only specify fields you want to change.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `username` | string | Yes | Current username |
-| `new_username` | string | No | New username |
-| `real_name` | string | No | New full name |
-| `home_dir` | string | No | New home directory |
-| `shell` | string | No | New login shell |
-| `uid` | integer | No | New user ID |
-| `gid` | integer | No | New group ID |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "modify",
-    "success": true,
-    "user": {
-      "username": "testuser",
-      "uid": 1000,
-      "gid": 1000,
-      "real_name": "Updated Name",
-      "home": "/home/testuser",
-      "shell": "/bin/zsh"
-    },
-    "changes": {
-      "real_name": true,
-      "shell": true
-    }
-  }
-}
-```
-
-### `change_password`
-
-Change a user's password. **Dangerous operation - blocked in safe mode.**
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `username` | string | Yes | Username |
-| `new_password` | string | Yes | New password |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "change_password",
-    "success": true,
-    "username": "testuser"
-  }
-}
-```
-
-### `get_package_info`
-
-Get detailed information about an installed package.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `package_name` | string | Yes | Name of the package |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "name": "bash",
-    "type": "deb",
-    "description": "GNU Bourne Again SHell",
-    "architecture": "amd64",
-    "version": "5.2.21-2ubuntu4",
-    "maintainer": "Ubuntu Developers",
-    "install_date": "2024-01-15",
-    "url": "https://www.gnu.org/software/bash/"
-  }
-}
-```
-
-### `list_available_updates`
-
-List all available package updates, including security updates.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_count": 81,
-    "security_count": 12,
-    "updates": [
-      {
-        "name": "bash",
-        "current_version": "5.2.20-1",
-        "new_version": "5.2.21-2",
-        "description": "GNU Bourne Again SHell",
-        "source": "apt",
-        "system": "apt",
-        "is_security": false
-      }
-    ],
-    "security_updates": [
-      {
-        "name": "openssl",
-        "current_version": "3.0.12",
-        "new_version": "3.0.13",
-        "description": "SSL toolkit",
-        "is_security": true
-      }
-    ]
-  }
-}
-```
-
-### `get_package_count`
-
-Get the total count of installed packages.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "installed_count": 1249
-  }
-}
-```
-
-### `read_file`
-
-Read the contents of a file from the remote system.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Absolute path to the file |
-| `as_lines` | boolean | No | If true, return as array of lines (default: false) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "path": "/etc/hostname",
-    "content": "server.example.com\n",
-    "size": 20
-  }
-}
-```
-
-### `write_file`
-
-Write content to a file. **Dangerous operation.** In safe mode, only writes to `/tmp` and `/var/tmp` are allowed. System directories are always blocked.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Absolute path to the file |
-| `content` | string | Yes | Content to write |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "write",
-    "path": "/tmp/test.txt",
-    "success": true,
-    "bytes_written": 13
-  }
-}
-```
-
-### `delete_file`
-
-Delete a file or empty directory. **Dangerous operation.** In safe mode, only deletes in `/tmp` and `/var/tmp` are allowed.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Absolute path to delete |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "delete",
-    "path": "/tmp/old.txt",
-    "success": true
-  }
-}
-```
-
-### `copy_file`
-
-Copy a file to a new location. In safe mode, destination must be in `/tmp` or `/var/tmp`.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `source` | string | Yes | Absolute path to source file |
-| `destination` | string | Yes | Absolute path to destination |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "copy",
-    "source": "/etc/hostname",
-    "destination": "/tmp/hostname_backup",
-    "success": true
-  }
-}
-```
-
-### `rename_file`
-
-Rename or move a file. In safe mode, both paths must be in `/tmp` or `/var/tmp`.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `source` | string | Yes | Absolute path to source |
-| `destination` | string | Yes | Absolute path to new location |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "rename",
-    "source": "/tmp/old.txt",
-    "destination": "/tmp/new.txt",
-    "success": true
-  }
-}
-```
-
-### `create_directory`
-
-Create a new directory. In safe mode, only directories in `/tmp` or `/var/tmp` can be created.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `path` | string | Yes | Absolute path to create |
-| `mode` | integer | No | Permission mode (default: 755) |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "action": "create_directory",
-    "path": "/tmp/newdir",
-    "mode": 755,
-    "success": true
-  }
-}
-```
-
-### `list_processes`
-
-List all running processes on the system.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 150,
-    "processes": [
-      {
-        "pid": 1,
-        "ppid": 0,
-        "user": "root",
-        "cpu": "0.1 %",
-        "memory": "1024 kB",
-        "memory_bytes": 1048576,
-        "time": "00:01:00",
-        "command": "/sbin/init",
-        "nice": 0,
-        "tty": "None"
-      }
-    ]
-  }
-}
-```
-
-### `list_mounts`
-
-List all mounted filesystems.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_count": 15,
-    "real_filesystem_count": 3,
-    "mounts": [
-      {
-        "mount_point": "/",
-        "device": "/dev/sda1",
-        "type": "ext4",
-        "options": "rw,relatime"
-      }
-    ],
-    "real_filesystems": [
-      {
-        "mount_point": "/",
-        "device": "/dev/sda1",
-        "type": "ext4",
-        "options": "rw,relatime"
-      }
-    ]
-  }
-}
-```
-
-### `list_disks`
-
-List all physical disks with SMART capability.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 2,
-    "disks": [
-      {
-        "device": "/dev/sda",
-        "model": "Samsung SSD 870",
-        "serial": "S5XXNX0T123456",
-        "capacity": "500GB",
-        "smart_enabled": true,
-        "type": "sata"
-      }
-    ]
-  }
-}
-```
-
-### `get_disk_health`
-
-Get SMART health status for a specific disk.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `device` | string | Yes | Device path (e.g., "/dev/sda") |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "device": "/dev/sda",
-    "health": "PASSED",
-    "healthy": true,
-    "model": "Samsung SSD 870",
-    "serial": "S5XXNX0T123456",
-    "firmware": "SVT04B6Q",
-    "temperature": 35,
-    "power_on_hours": 1234,
-    "power_cycles": 567,
-    "attributes": [
-      {
-        "id": 5,
-        "name": "Reallocated_Sector_Ct",
-        "value": 100,
-        "worst": 100,
-        "threshold": 10,
-        "raw": 0,
-        "type": "pre-fail",
-        "failed": false
-      }
-    ],
-    "failed_attributes": [],
-    "errors": [],
-    "error_count": 0
-  }
-}
-```
-
-### `list_volume_groups`
-
-List all LVM volume groups.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 1,
-    "volume_groups": [
-      {
-        "name": "vg_data",
-        "size_bytes": 107374182400,
-        "size_mb": 102400.0,
-        "free_bytes": 53687091200,
-        "free_mb": 51200.0,
-        "pv_count": 2,
-        "lv_count": 3,
-        "extent_size": 4194304,
-        "extent_count": 25600,
-        "free_extents": 12800
-      }
-    ]
-  }
-}
-```
-
-### `list_logical_volumes`
-
-List all LVM logical volumes.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `volume_group` | string | No | Filter by volume group name |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 2,
-    "volume_group": null,
-    "logical_volumes": [
-      {
-        "name": "lv_root",
-        "volume_group": "vg_system",
-        "size_bytes": 21474836480,
-        "size_mb": 20480.0,
-        "device": "/dev/vg_system/lv_root",
-        "active": true,
-        "mounted": "/",
-        "stripes": 1,
-        "stripe_size": null
-      }
-    ]
-  }
-}
-```
-
-### `get_system_time`
-
-Get the current system time and timezone configuration.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "timezone": "America/New_York",
-    "year": 2026,
-    "month": 2,
-    "day": 16,
-    "hour": 10,
-    "minute": 30,
-    "second": 45
-  }
-}
-```
-
-### `list_runlevels`
-
-List system runlevels and their descriptions.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 7,
-    "runlevels": [
-      {"level": "0", "name": "halt", "description": "System halt"},
-      {"level": "3", "name": "multi", "description": "Multi-user mode"}
-    ]
-  }
-}
-```
-
-### `get_ssh_config`
-
-Get SSH server (sshd) configuration settings.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "settings": {
-      "port": "22",
-      "permit_root_login": "no",
-      "password_authentication": "yes",
-      "pubkey_authentication": "yes"
-    }
-  }
-}
-```
-
-### `list_webmin_logs`
-
-List Webmin action/audit logs.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `limit` | integer | No | Max entries to return (default: 100) |
-| `module` | string | No | Filter by module name |
-| `user` | string | No | Filter by username |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 50,
-    "logs": [
-      {
-        "id": 1,
-        "time": 1708091445,
-        "user": "admin",
-        "module": "useradmin",
-        "action": "save_user.cgi",
-        "description": "Created user testuser",
-        "ip": "192.168.1.100"
-      }
-    ]
-  }
-}
-```
-
-### `list_backups`
-
-List Webmin configuration backups.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 1,
-    "backups": [
-      {
-        "id": "backup1",
-        "file": "/var/webmin/backups/config.tar.gz",
-        "schedule": "daily",
-        "enabled": true
-      }
-    ]
-  }
-}
-```
-
-### `list_fail2ban_jails`
-
-List all Fail2ban jails and their status.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 2,
-    "jails": [
-      {
-        "name": "sshd",
-        "enabled": true,
-        "maxretry": 5,
-        "bantime": 3600,
-        "currently_banned": 3
-      }
-    ]
-  }
-}
-```
-
-### `get_fail2ban_status`
-
-Get Fail2ban status for a specific jail or overall.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `jail` | string | No | Jail name for specific status |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "jail": "sshd",
-    "running": true,
-    "currently_banned": 3,
-    "banned_ips": ["192.168.1.100", "10.0.0.50"]
-  }
-}
-```
-
-### `list_banned_ips`
-
-List all currently banned IP addresses from Fail2ban.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `jail` | string | No | Filter by jail name |
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 3,
-    "banned_ips": [
-      {"ip": "192.168.1.100", "jail": "sshd"},
-      {"ip": "10.0.0.50", "jail": "sshd"}
-    ]
-  }
-}
-```
-
-### `list_mysql_databases`
-
-List all MySQL databases.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "total_count": 6,
-    "user_database_count": 2,
-    "system_database_count": 4,
-    "user_databases": [
-      {"name": "wordpress", "tables": 12, "size": 52428800}
-    ],
-    "system_databases": [
-      {"name": "mysql"},
-      {"name": "information_schema"}
-    ]
-  }
-}
-```
-
-### `list_mysql_users`
-
-List all MySQL users and their host permissions.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "count": 3,
-    "users": [
-      {"user": "root", "host": "localhost", "password_set": true},
-      {"user": "wordpress", "host": "%", "password_set": true}
-    ]
-  }
-}
-```
-
-### `get_mysql_status`
-
-Get MySQL server status.
-
-**Parameters:** None
-
-**Returns:**
-```json
-{
-  "success": true,
-  "data": {
-    "running": true,
-    "version": "8.0.35",
-    "uptime": 86400,
-    "threads": 5,
-    "connections": 500
-  }
-}
-```
+All tools accept an optional `server` parameter to target a specific Webmin server. See the [full API reference](docs/api-reference.md) for detailed parameters and response formats.
+
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Server** | `list_webmin_servers`, `test_server_connection`, `get_webmin_version` | Manage and test server connections |
+| **System** | `get_system_info`, `get_memory_usage`, `get_system_time`, `list_runlevels`, `list_processes` | System monitoring and information |
+| **Services** | `list_services`, `get_service_status`, `start_service`, `stop_service`, `restart_service`, `enable_service`, `disable_service` | Service lifecycle management |
+| **Users & Groups** | `list_users`, `list_groups`, `create_user`, `modify_user`, `delete_user`, `change_password` | User and group administration |
+| **Cron** | `list_cron_jobs`, `create_cron_job`, `edit_cron_job`, `delete_cron_job` | Scheduled task management |
+| **Network** | `get_network_info` | Interface and routing details |
+| **Packages** | `get_package_info`, `list_available_updates`, `get_package_count` | Package information and updates |
+| **Files** | `read_file`, `write_file`, `delete_file`, `copy_file`, `rename_file`, `create_directory` | Remote file operations |
+| **Storage** | `get_disk_usage`, `list_mounts`, `list_disks`, `get_disk_health`, `list_volume_groups`, `list_logical_volumes` | Disk, mount, SMART, and LVM management |
+| **SSH** | `get_ssh_config` | SSH server configuration |
+| **Audit** | `list_webmin_logs`, `list_backups` | Action logs and backups |
+| **Security** | `list_fail2ban_jails`, `get_fail2ban_status`, `list_banned_ips` | Fail2ban intrusion prevention |
+| **Database** | `list_mysql_databases`, `list_mysql_users`, `get_mysql_status` | MySQL database management |
 
 ## Safety Framework
 
-The server includes a safety framework to prevent dangerous operations:
+The server includes a tiered safety system to prevent accidental damage.
 
 ### Safety Tiers
 
-- **Read**: No system changes (always allowed)
-- **Safe**: Low-risk changes (allowed in safe mode)
-- **Moderate**: Reversible changes (may be blocked for critical services)
-- **Dangerous**: Potentially destructive (blocked in safe mode)
-
-### Blocked Services
-
-Critical services that cannot be stopped or disabled:
-- `ssh`, `sshd` - Remote access
-- `webmin` - Webmin itself
-- `systemd-*` - Core system services
-- `dbus`, `networking`
-
-### Protected Users
-
-Critical system users that cannot be deleted:
-- `root`, `daemon`, `bin`, `sys`, `sync`, `nobody`
-- `systemd-network`, `systemd-resolve`
-
-### Protected Paths
-
-File operations are blocked for critical system directories:
-- `/etc`, `/bin`, `/sbin`, `/usr`, `/boot`, `/lib*`
-- `/root`, `/proc`, `/sys`, `/dev`
-- Files matching patterns: `.bashrc`, `.ssh`, `passwd`, `shadow`, `sudoers`
+| Tier | Description | Safe Mode |
+|------|-------------|-----------|
+| **Read** | No system changes | Always allowed |
+| **Safe** | Low-risk changes | Allowed |
+| **Moderate** | Reversible changes | May block critical services |
+| **Dangerous** | Destructive operations | Blocked |
 
 ### Safe Mode
 
-Safe mode is enabled by default for each server. In safe mode:
+Safe mode is **enabled by default**. When active:
 - Dangerous operations are blocked (user creation/deletion, password changes, cron deletion)
-- Critical services cannot be restarted
-- Some services can only be restarted (not stopped)
-- File writes/deletes only allowed in `/tmp` and `/var/tmp`
+- Critical services (`ssh`, `webmin`, `systemd-*`, `dbus`) cannot be stopped
+- File writes/deletes are restricted to `/tmp` and `/var/tmp`
+- Critical system users and paths are protected
 
-**Per-server safe mode (multi-server config):**
+Configure per-server in `webmin-servers.json`:
 ```json
 {
   "servers": {
-    "production": { "safe_mode": true, ... },
-    "development": { "safe_mode": false, ... }
+    "production": { "safe_mode": true },
+    "development": { "safe_mode": false }
   }
 }
 ```
 
-**Global safe mode (single-server):**
-```bash
-export WEBMIN_SAFE_MODE=false
-```
+Or globally via environment: `export WEBMIN_SAFE_MODE=false`
 
 ## Development
 
-### Running Tests
-
 ```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
 pytest
-```
 
-### Linting
-
-```bash
+# Lint and format
 ruff check src tests
 ruff format src tests
-```
 
-### Type Checking
-
-```bash
+# Type check
 mypy src
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to the project.
 
 ## Project Structure
 
@@ -1564,11 +208,12 @@ webmin-mcp-server/
 │   ├── models.py         # Pydantic models
 │   └── tools/            # MCP tool implementations
 ├── tests/                # Test suite
-├── docs/                 # Documentation
-│   └── webmin_api_map.md # Webmin API documentation
-└── webmin-servers.example.json  # Example multi-server config
+├── docs/
+│   ├── api-reference.md  # Full API documentation
+│   └── webmin_api_map.md # Webmin API endpoint mapping
+└── webmin-servers.example.json
 ```
 
 ## License
 
-MIT
+[MIT](LICENSE)

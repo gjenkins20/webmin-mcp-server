@@ -10,9 +10,15 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Your Name", email = "you@example.com" }
+    { name = "gjenkins20", email = "glj_dev_gplay.maritime207@passinbox.com" }
 ]
 keywords = ["mcp", "webmin", "linux", "system-administration"]
+
+[project.urls]
+Homepage = "https://github.com/gjenkins20/webmin-mcp-server"
+Repository = "https://github.com/gjenkins20/webmin-mcp-server"
+Issues = "https://github.com/gjenkins20/webmin-mcp-server/issues"
+Documentation = "https://github.com/gjenkins20/webmin-mcp-server/blob/main/docs/api-reference.md"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: System Administrators",

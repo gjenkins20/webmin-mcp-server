@@ -6,10 +6,12 @@ Project tasks and planned work for webmin-mcp-server.
 
 ## Publication
 
-- [ ] **Plan open source publication**
-  - License review
-  - README polish
-  - CONTRIBUTING.md
+- [x] **Plan open source publication**
+  - License review (MIT in place)
+  - README polished (badges, quick start, tool summary table, links)
+  - CONTRIBUTING.md written
+  - API reference split to docs/api-reference.md
+  - Project URLs added to pyproject.toml
 
 - [ ] **Plan Docker Hub publication**
   - Dockerfile review
@@ -45,4 +47,4 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
 ---
 
-*Last updated: 2026-02-16*
+*Last updated: 2026-02-16 (publication polish complete)*
