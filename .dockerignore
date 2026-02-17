@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*.egg-info
+dist
+build
+.eggs
+
+# Virtual environments
+.venv
+venv
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Testing & dev tools
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.tox
+.nox
+
+# Credentials & config
+.env
+.env.local
+.env.*.local
+webmin-servers.json
+
+# Internal dev files
+CLAUDE.md
+CLAUDE.md.old
+.claude
+agents
+TODO.md
+
+# Docs & misc
+docs/design
+docs/usage
+*.md
+!README.md
+LICENSE

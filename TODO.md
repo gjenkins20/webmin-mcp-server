@@ -13,10 +13,11 @@ Project tasks and planned work for webmin-mcp-server.
   - API reference split to docs/api-reference.md
   - Project URLs added to pyproject.toml
 
-- [ ] **Plan Docker Hub publication**
-  - Dockerfile review
-  - Build automation
-  - Tagging strategy
+- [x] **Plan Docker Hub publication**
+  - Dockerfile created (multi-stage build, non-root user)
+  - GitHub Actions workflow for auto-build on push/tag
+  - Tagging: semver, branch, SHA
+  - Docker Hub image: gjenkins20/webmin-mcp-server
 
 ---
 
@@ -47,4 +48,4 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
 ---
 
-*Last updated: 2026-02-16 (publication polish complete)*
+*Last updated: 2026-02-16 (Docker Hub publication complete)*

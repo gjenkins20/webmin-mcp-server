@@ -13,12 +13,6 @@ authors = [
     { name = "gjenkins20", email = "glj_dev_gplay.maritime207@passinbox.com" }
 ]
 keywords = ["mcp", "webmin", "linux", "system-administration"]
-
-[project.urls]
-Homepage = "https://github.com/gjenkins20/webmin-mcp-server"
-Repository = "https://github.com/gjenkins20/webmin-mcp-server"
-Issues = "https://github.com/gjenkins20/webmin-mcp-server/issues"
-Documentation = "https://github.com/gjenkins20/webmin-mcp-server/blob/main/docs/api-reference.md"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: System Administrators",
@@ -27,13 +21,18 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-
 dependencies = [
     "mcp>=1.0.0",
     "httpx>=0.27.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/gjenkins20/webmin-mcp-server"
+Repository = "https://github.com/gjenkins20/webmin-mcp-server"
+Issues = "https://github.com/gjenkins20/webmin-mcp-server/issues"
+Documentation = "https://github.com/gjenkins20/webmin-mcp-server/blob/main/docs/api-reference.md"
 
 [project.optional-dependencies]
 dev = [

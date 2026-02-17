@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/docker/v/gjenkins20/webmin-mcp-server?label=docker&sort=semver)](https://hub.docker.com/r/gjenkins20/webmin-mcp-server)
 [![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
 
 An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that provides Claude with tools to manage Linux systems via [Webmin](https://webmin.com)'s administration interface.
@@ -23,11 +24,18 @@ An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that p
 
 ## Quick Start
 
-1. **Install:**
+1. **Install** (choose one):
+
+   **From source:**
    ```bash
    git clone https://github.com/gjenkins20/webmin-mcp-server.git
    cd webmin-mcp-server
    pip install -e .
+   ```
+
+   **With Docker:**
+   ```bash
+   docker pull gjenkins20/webmin-mcp-server
    ```
 
 2. **Configure** -- Create a `webmin-servers.json` (see [Configuration](#configuration)):
@@ -49,6 +57,8 @@ An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that p
    ```
 
 3. **Add to Claude Desktop** (`claude_desktop_config.json`):
+
+   **From source:**
    ```json
    {
      "mcpServers": {
@@ -59,6 +69,22 @@ An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that p
          "env": {
            "WEBMIN_CONFIG_FILE": "/path/to/webmin-servers.json"
          }
+       }
+     }
+   }
+   ```
+
+   **With Docker:**
+   ```json
+   {
+     "mcpServers": {
+       "webmin": {
+         "command": "docker",
+         "args": [
+           "run", "--rm", "-i",
+           "-v", "/path/to/webmin-servers.json:/app/webmin-servers.json:ro",
+           "gjenkins20/webmin-mcp-server"
+         ]
        }
      }
    }
@@ -178,6 +204,45 @@ Configure per-server in `webmin-servers.json`:
 
 Or globally via environment: `export WEBMIN_SAFE_MODE=false`
 
+## Docker
+
+### Pull from Docker Hub
+
+```bash
+docker pull gjenkins20/webmin-mcp-server
+```
+
+### Build locally
+
+```bash
+docker build -t webmin-mcp-server .
+```
+
+### Run standalone
+
+```bash
+# With config file
+docker run --rm -i \
+  -v /path/to/webmin-servers.json:/app/webmin-servers.json:ro \
+  gjenkins20/webmin-mcp-server
+
+# With environment variables
+docker run --rm -i \
+  -e WEBMIN_HOST=192.168.1.100 \
+  -e WEBMIN_USERNAME=admin \
+  -e WEBMIN_PASSWORD=your-password \
+  gjenkins20/webmin-mcp-server
+```
+
+### Tagging strategy
+
+| Tag | Description |
+|-----|-------------|
+| `latest` | Latest build from `main` branch |
+| `0.1.0` | Specific release version |
+| `0.1` | Latest patch for minor version |
+| `abc1234` | Specific commit SHA |
+
 ## Development
 
 ```bash
@@ -211,6 +276,8 @@ webmin-mcp-server/
 ├── docs/
 │   ├── api-reference.md  # Full API documentation
 │   └── webmin_api_map.md # Webmin API endpoint mapping
+├── .github/workflows/    # CI/CD (Docker build & push)
+├── Dockerfile
 └── webmin-servers.example.json
 ```
 
