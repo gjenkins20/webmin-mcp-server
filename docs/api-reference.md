@@ -1363,3 +1363,302 @@ Get MySQL server status.
   }
 }
 ```
+
+---
+
+## Webmin ACL Management
+
+### `list_webmin_users`
+
+List all Webmin user accounts (NOT system users).
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 2,
+    "users": [
+      {"name": "admin", "modules": ["*"], "module_count": 1, "has_all_modules": true},
+      {"name": "operator", "modules": ["init", "proc"], "module_count": 2, "has_all_modules": false}
+    ]
+  }
+}
+```
+
+### `get_webmin_user`
+
+Get detailed permissions for a Webmin user.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Webmin username |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "name": "admin",
+    "modules": ["*"],
+    "module_count": 1,
+    "has_all_modules": true,
+    "lang": "en",
+    "theme": "authentic-theme",
+    "readonly": null
+  }
+}
+```
+
+### `list_webmin_modules`
+
+List all available Webmin modules that can be assigned to users.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 45,
+    "modules": [
+      {"name": "useradmin", "description": "Users and Groups", "category": "system"},
+      {"name": "init", "description": "Bootup and Shutdown", "category": "system"}
+    ]
+  }
+}
+```
+
+### `create_webmin_user`
+
+Create a new Webmin user account. **Dangerous operation - blocked in safe mode.**
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Username for the new account |
+| `password` | string | Yes | Password |
+| `modules` | array | No | List of module names to grant access |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "create",
+    "success": true,
+    "user": {
+      "name": "operator",
+      "modules": ["init", "proc"],
+      "module_count": 2
+    }
+  }
+}
+```
+
+### `modify_webmin_user`
+
+Modify a Webmin user's permissions or password. **Dangerous operation - blocked in safe mode.** Cannot demote the last superuser.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Webmin username to modify |
+| `password` | string | No | New password |
+| `modules` | array | No | New module list (replaces existing) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "modify",
+    "success": true,
+    "user": {"name": "operator", "modules": ["init", "proc", "cron"], "module_count": 3},
+    "changes": {"modules": true}
+  }
+}
+```
+
+### `delete_webmin_user`
+
+Delete a Webmin user account. **Dangerous operation - blocked in safe mode.** The last superuser account cannot be deleted regardless of safe mode.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Webmin username to delete |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "delete",
+    "success": true,
+    "deleted_user": {"name": "operator"}
+  }
+}
+```
+
+---
+
+## Disk Quota Management
+
+### `list_quota_filesystems`
+
+List filesystems with disk quota support.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_count": 3,
+    "quota_capable_count": 2,
+    "quota_enabled_count": 2,
+    "filesystems": [
+      {
+        "mount_point": "/",
+        "device": "/dev/sda1",
+        "type": "ext4",
+        "quota_support": true,
+        "quota_type": "both",
+        "quota_enabled": true
+      }
+    ]
+  }
+}
+```
+
+### `list_user_quotas`
+
+List all user quotas on a filesystem.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `filesystem` | string | Yes | Mount point (e.g., "/") |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "filesystem": "/",
+    "block_size": 1024,
+    "count": 2,
+    "quotas": [
+      {
+        "user": "alice",
+        "used_blocks": 500,
+        "soft_block_limit": 1000,
+        "hard_block_limit": 2000,
+        "used_bytes": 512000,
+        "soft_limit_bytes": 1024000,
+        "hard_limit_bytes": 2048000,
+        "used_files": 50,
+        "soft_file_limit": 100,
+        "hard_file_limit": 200
+      }
+    ]
+  }
+}
+```
+
+### `get_user_quota`
+
+Get quota limits and usage for a specific user.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Username |
+| `filesystem` | string | Yes | Mount point |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": "alice",
+    "filesystem": "/",
+    "block_size": 1024,
+    "quota_enabled": true,
+    "used_blocks": 500,
+    "soft_block_limit": 1000,
+    "hard_block_limit": 2000,
+    "used_bytes": 512000,
+    "used_files": 50,
+    "soft_file_limit": 100,
+    "hard_file_limit": 200
+  }
+}
+```
+
+### `get_group_quota`
+
+Get quota limits and usage for a specific group.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `group` | string | Yes | Group name |
+| `filesystem` | string | Yes | Mount point |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "group": "developers",
+    "filesystem": "/home",
+    "block_size": 1024,
+    "quota_enabled": true,
+    "used_blocks": 2000,
+    "soft_block_limit": 5000,
+    "hard_block_limit": 10000,
+    "used_bytes": 2048000,
+    "used_files": 500,
+    "soft_file_limit": 1000,
+    "hard_file_limit": 2000
+  }
+}
+```
+
+### `set_user_quota`
+
+Set disk quota limits for a user. **Dangerous operation - blocked in safe mode.**
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `username` | string | Yes | Username |
+| `filesystem` | string | Yes | Mount point |
+| `soft_block_limit` | integer | No | Soft block limit (0 = unlimited) |
+| `hard_block_limit` | integer | No | Hard block limit (0 = unlimited) |
+| `soft_file_limit` | integer | No | Soft file limit (0 = unlimited) |
+| `hard_file_limit` | integer | No | Hard file limit (0 = unlimited) |
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "action": "set_quota",
+    "success": true,
+    "user": "alice",
+    "filesystem": "/",
+    "soft_block_limit": 1000,
+    "hard_block_limit": 2000,
+    "soft_file_limit": 100,
+    "hard_file_limit": 200
+  }
+}
+```

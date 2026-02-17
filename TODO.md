@@ -25,9 +25,9 @@ Project tasks and planned work for webmin-mcp-server.
 
 From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
-- [ ] `quota::` — Disk quota management
-- [ ] `passwd::` — Password changes
-- [ ] `acl::` — Webmin ACL management
+- [x] `quota::` — Disk quota management
+- [x] `passwd::` — Password changes (covered by existing `change_password` via `useradmin::modify_user`)
+- [x] `acl::` — Webmin ACL management
 - [ ] `firewall::` — Firewall rules (not available on some systems)
 - [ ] `bind8::` — DNS configuration (not available on some systems)
 
@@ -48,4 +48,4 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
 ---
 
-*Last updated: 2026-02-16 (Docker Hub publication complete)*
+*Last updated: 2026-02-16 (quota, acl modules implemented; passwd covered by existing tools)*

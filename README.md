@@ -19,6 +19,8 @@ An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that p
 - **Storage** -- SMART disk health monitoring and LVM volume management
 - **Security** -- Fail2ban jail status and banned IP management
 - **Database** -- MySQL databases, users, and server status
+- **Webmin ACL** -- Manage Webmin user accounts and module permissions
+- **Disk Quotas** -- Monitor and set disk quota limits for users and groups
 - **Audit & Backup** -- Webmin action logs, SSH config, and configuration backups
 - **Safety Framework** -- Tiered safety system with safe mode to prevent dangerous operations
 
@@ -170,6 +172,8 @@ All tools accept an optional `server` parameter to target a specific Webmin serv
 | **Audit** | `list_webmin_logs`, `list_backups` | Action logs and backups |
 | **Security** | `list_fail2ban_jails`, `get_fail2ban_status`, `list_banned_ips` | Fail2ban intrusion prevention |
 | **Database** | `list_mysql_databases`, `list_mysql_users`, `get_mysql_status` | MySQL database management |
+| **Webmin ACL** | `list_webmin_users`, `get_webmin_user`, `list_webmin_modules`, `create_webmin_user`, `modify_webmin_user`, `delete_webmin_user` | Webmin user and permission management |
+| **Disk Quotas** | `list_quota_filesystems`, `list_user_quotas`, `get_user_quota`, `get_group_quota`, `set_user_quota` | Disk quota monitoring and management |
 
 ## Safety Framework
 

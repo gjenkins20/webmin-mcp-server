@@ -439,17 +439,16 @@ class TestChangePassword:
     async def test_change_password_success(self, mock_client: AsyncMock) -> None:
         """Test successfully changing a password."""
         mock_client.call.side_effect = [
-            [  # list_users
-                {
-                    "user": "testuser",
-                    "uid": 1000,
-                    "gid": 1000,
-                    "real": "Test User",
-                    "home": "/home/testuser",
-                    "shell": "/bin/bash",
-                }
-            ],
-            1,  # modify_user returns 1
+            {  # passwd::find_user returns user dict
+                "user": "testuser",
+                "uid": 1000,
+                "gid": 1000,
+                "real": "Test User",
+                "home": "/home/testuser",
+                "shell": "/bin/bash",
+                "mod": "useradmin",
+            },
+            None,  # passwd::change_password returns None
         ]
 
         result = await users.change_password(
@@ -462,6 +461,10 @@ class TestChangePassword:
         assert result.success
         assert result.data["action"] == "change_password"
         assert result.data["username"] == "testuser"
+        # Verify passwd module was called (not useradmin directly)
+        calls = mock_client.call.call_args_list
+        assert calls[0].args == ("passwd", "find_user", "testuser")
+        assert calls[1].args[0:2] == ("passwd", "change_password")
 
     async def test_change_password_empty_password(
         self, mock_client: AsyncMock
@@ -481,7 +484,7 @@ class TestChangePassword:
         self, mock_client: AsyncMock
     ) -> None:
         """Test changing password for non-existent user."""
-        mock_client.call.return_value = []  # No users
+        mock_client.call.return_value = None  # passwd::find_user returns None
 
         result = await users.change_password(
             mock_client,

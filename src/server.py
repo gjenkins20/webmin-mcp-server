@@ -22,7 +22,7 @@ from .config import (
     reset_config_cache,
 )
 from .models import ToolResult
-from .tools import admin, cron, database, files, packages, security, services, storage, system, users
+from .tools import acl, admin, cron, database, files, packages, quota, security, services, storage, system, users
 from .webmin_client import (
     WebminAuthError,
     WebminClient,
@@ -992,6 +992,238 @@ TOOLS = [
             "required": [],
         },
     ),
+    # Phase 7: Webmin ACL Management Tools
+    Tool(
+        name="list_webmin_users",
+        description=(
+            "List all Webmin user accounts (NOT system users). "
+            "Shows usernames and which modules each user can access."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {**SERVER_PARAM},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="get_webmin_user",
+        description=(
+            "Get detailed permissions for a specific Webmin user account. "
+            "Shows which modules the user can access."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "username": {
+                    "type": "string",
+                    "description": "Webmin username to look up",
+                },
+            },
+            "required": ["username"],
+        },
+    ),
+    Tool(
+        name="list_webmin_modules",
+        description=(
+            "List all available Webmin modules that can be assigned to users."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {**SERVER_PARAM},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="create_webmin_user",
+        description=(
+            "Create a new Webmin user account. This is a dangerous operation "
+            "and is blocked in safe mode."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "username": {
+                    "type": "string",
+                    "description": "Username for the new Webmin account",
+                },
+                "password": {
+                    "type": "string",
+                    "description": "Password for the new account",
+                },
+                "modules": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of module names to grant access to (e.g., ['useradmin', 'init'])",
+                },
+            },
+            "required": ["username", "password"],
+        },
+    ),
+    Tool(
+        name="modify_webmin_user",
+        description=(
+            "Modify a Webmin user's permissions or password. "
+            "This is a dangerous operation and is blocked in safe mode. "
+            "Cannot demote the last superuser account."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "username": {
+                    "type": "string",
+                    "description": "Webmin username to modify",
+                },
+                "password": {
+                    "type": "string",
+                    "description": "New password (optional)",
+                },
+                "modules": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "New list of module names (replaces existing). Use ['*'] for all modules.",
+                },
+            },
+            "required": ["username"],
+        },
+    ),
+    Tool(
+        name="delete_webmin_user",
+        description=(
+            "Delete a Webmin user account. This is a dangerous operation "
+            "and is blocked in safe mode. The last superuser account "
+            "cannot be deleted regardless of safe mode."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "username": {
+                    "type": "string",
+                    "description": "Webmin username to delete",
+                },
+            },
+            "required": ["username"],
+        },
+    ),
+    # Phase 7: Disk Quota Management Tools
+    Tool(
+        name="list_quota_filesystems",
+        description=(
+            "List filesystems with disk quota support. Shows which "
+            "filesystems have quotas enabled and their status."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {**SERVER_PARAM},
+            "required": [],
+        },
+    ),
+    Tool(
+        name="list_user_quotas",
+        description=(
+            "List all user quotas on a specific filesystem. Shows "
+            "disk usage, soft/hard limits for blocks and files."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "filesystem": {
+                    "type": "string",
+                    "description": "Mount point of the filesystem (e.g., '/')",
+                },
+            },
+            "required": ["filesystem"],
+        },
+    ),
+    Tool(
+        name="get_user_quota",
+        description=(
+            "Get quota limits and usage for a specific user on a filesystem."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "username": {
+                    "type": "string",
+                    "description": "Username to get quota for",
+                },
+                "filesystem": {
+                    "type": "string",
+                    "description": "Mount point of the filesystem",
+                },
+            },
+            "required": ["username", "filesystem"],
+        },
+    ),
+    Tool(
+        name="get_group_quota",
+        description=(
+            "Get quota limits and usage for a specific group on a filesystem."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "group": {
+                    "type": "string",
+                    "description": "Group name to get quota for",
+                },
+                "filesystem": {
+                    "type": "string",
+                    "description": "Mount point of the filesystem",
+                },
+            },
+            "required": ["group", "filesystem"],
+        },
+    ),
+    Tool(
+        name="set_user_quota",
+        description=(
+            "Set disk quota limits for a user on a filesystem. "
+            "This is a dangerous operation and is blocked in safe mode. "
+            "Set limits to 0 for unlimited."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                **SERVER_PARAM,
+                "username": {
+                    "type": "string",
+                    "description": "Username to set quota for",
+                },
+                "filesystem": {
+                    "type": "string",
+                    "description": "Mount point of the filesystem",
+                },
+                "soft_block_limit": {
+                    "type": "integer",
+                    "description": "Soft limit for disk blocks (0 = unlimited)",
+                    "default": 0,
+                },
+                "hard_block_limit": {
+                    "type": "integer",
+                    "description": "Hard limit for disk blocks (0 = unlimited)",
+                    "default": 0,
+                },
+                "soft_file_limit": {
+                    "type": "integer",
+                    "description": "Soft limit for file count (0 = unlimited)",
+                    "default": 0,
+                },
+                "hard_file_limit": {
+                    "type": "integer",
+                    "description": "Hard limit for file count (0 = unlimited)",
+                    "default": 0,
+                },
+            },
+            "required": ["username", "filesystem"],
+        },
+    ),
 ]
 
 
@@ -1526,6 +1758,138 @@ async def dispatch_tool(
 
     if name == "get_mysql_status":
         return await database.get_mysql_status(client)
+
+    # Phase 7 tools - Webmin ACL Management
+    if name == "list_webmin_users":
+        return await acl.list_webmin_users(client)
+
+    if name == "get_webmin_user":
+        username = arguments.get("username")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        return await acl.get_webmin_user(client, username)
+
+    if name == "list_webmin_modules":
+        return await acl.list_webmin_modules(client)
+
+    if name == "create_webmin_user":
+        username = arguments.get("username")
+        password = arguments.get("password")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        if not password:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: password",
+            )
+        return await acl.create_webmin_user(
+            client,
+            username=username,
+            password=password,
+            modules=arguments.get("modules"),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "modify_webmin_user":
+        username = arguments.get("username")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        return await acl.modify_webmin_user(
+            client,
+            username=username,
+            password=arguments.get("password"),
+            modules=arguments.get("modules"),
+            safe_mode=config.safe_mode,
+        )
+
+    if name == "delete_webmin_user":
+        username = arguments.get("username")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        return await acl.delete_webmin_user(
+            client,
+            username=username,
+            safe_mode=config.safe_mode,
+        )
+
+    # Phase 7 tools - Disk Quota Management
+    if name == "list_quota_filesystems":
+        return await quota.list_quota_filesystems(client)
+
+    if name == "list_user_quotas":
+        filesystem = arguments.get("filesystem")
+        if not filesystem:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: filesystem",
+            )
+        return await quota.list_user_quotas(client, filesystem)
+
+    if name == "get_user_quota":
+        username = arguments.get("username")
+        filesystem = arguments.get("filesystem")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        if not filesystem:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: filesystem",
+            )
+        return await quota.get_user_quota(client, username, filesystem)
+
+    if name == "get_group_quota":
+        group = arguments.get("group")
+        filesystem = arguments.get("filesystem")
+        if not group:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: group",
+            )
+        if not filesystem:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: filesystem",
+            )
+        return await quota.get_group_quota(client, group, filesystem)
+
+    if name == "set_user_quota":
+        username = arguments.get("username")
+        filesystem = arguments.get("filesystem")
+        if not username:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: username",
+            )
+        if not filesystem:
+            return ToolResult.fail(
+                code="MISSING_ARGUMENT",
+                message="Missing required argument: filesystem",
+            )
+        return await quota.set_user_quota(
+            client,
+            username=username,
+            filesystem=filesystem,
+            soft_block_limit=arguments.get("soft_block_limit", 0),
+            hard_block_limit=arguments.get("hard_block_limit", 0),
+            soft_file_limit=arguments.get("soft_file_limit", 0),
+            hard_file_limit=arguments.get("hard_file_limit", 0),
+            safe_mode=config.safe_mode,
+        )
 
     # Unknown tool
     return ToolResult.fail(

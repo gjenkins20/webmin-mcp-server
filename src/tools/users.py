@@ -460,26 +460,19 @@ async def change_password(
         )
 
     try:
-        # Find the user
-        users = await client.call("useradmin", "list_users")
-        old_user = None
-        for user in users:
-            if user.get("user") == username:
-                old_user = user
-                break
+        # Use passwd::find_user which searches both local and LDAP backends
+        user = await client.call("passwd", "find_user", username)
 
-        if not old_user:
+        if not user:
             return ToolResult.fail(
                 code="USER_NOT_FOUND",
                 message=f"User '{username}' not found",
             )
 
-        # Build new user data with new password
-        new_user = old_user.copy()
-        new_user["pass"] = new_password
-
-        # Modify the user (this updates the password)
-        result = await client.call("useradmin", "modify_user", old_user, new_user)
+        # Use passwd::change_password which properly encrypts the password,
+        # updates shadow timestamps, handles file locking, runs pre/post hooks,
+        # and propagates to other modules (Samba, MySQL, etc.)
+        await client.call("passwd", "change_password", user, new_password, 1)
 
         return ToolResult.ok({
             "action": "change_password",

@@ -726,13 +726,233 @@ Get MySQL server status.
 
 ---
 
+## Module: acl (Webmin ACL / User Management)
+
+### list_users
+
+List all Webmin user accounts.
+
+- **Method:** `acl::list_users`
+- **Arguments:** None (optional: array of usernames to filter)
+- **Returns:** List of user dictionaries with keys: `name`, `pass`, `modules` (list of module names), `lang`, `theme`, `readonly`, `real`, `email`, and more
+- **Example:**
+  ```python
+  users = await client.call("acl", "list_users")
+  # Returns: [{"name": "admin", "modules": ["*"], ...}, ...]
+  ```
+
+### get_user
+
+Get a single Webmin user by name (more efficient than list_users + filter).
+
+- **Method:** `acl::get_user`
+- **Arguments:** `username` (string)
+- **Returns:** User dictionary (same format as list_users entries), or `None` if not found
+- **Example:**
+  ```python
+  user = await client.call("acl", "get_user", "admin")
+  # Returns: {"name": "admin", "modules": ["*"], "lang": "en", ...}
+  ```
+
+### list_module_infos
+
+List all available Webmin modules with descriptions.
+
+- **Method:** `acl::list_module_infos`
+- **Arguments:** None
+- **Returns:** List of module dictionaries with keys: `dir`, `desc`, `category`
+- **Example:**
+  ```python
+  modules = await client.call("acl", "list_module_infos")
+  # Returns: [{"dir": "useradmin", "desc": "Users and Groups", "category": "system"}, ...]
+  ```
+
+### encrypt_password
+
+Encrypt a plaintext password for use in create_user/modify_user.
+
+- **Method:** `acl::encrypt_password`
+- **Arguments:** `password` (string), optional `salt` (string)
+- **Returns:** Encrypted password string (MD5/SHA512/DES depending on configuration)
+- **Known Quirks:** Passwords MUST be encrypted before passing to create_user or modify_user.
+- **Example:**
+  ```python
+  encrypted = await client.call("acl", "encrypt_password", "plaintext")
+  # Returns: "$1$salt$encrypted_hash"
+  ```
+
+### create_user
+
+Create a new Webmin user account.
+
+- **Method:** `acl::create_user`
+- **Arguments:** User dictionary with keys: `name`, `pass` (must be pre-encrypted), `modules`
+- **Returns:** None
+- **Safety Tier:** Dangerous
+- **Known Quirks:** Username "webmin" is explicitly forbidden by the Webmin API.
+- **Example:**
+  ```python
+  encrypted = await client.call("acl", "encrypt_password", "password")
+  user_data = {"name": "operator", "pass": encrypted, "modules": ["init", "proc"]}
+  await client.call("acl", "create_user", user_data)
+  ```
+
+### modify_user
+
+Modify an existing Webmin user.
+
+- **Method:** `acl::modify_user`
+- **Arguments:** `old_name` (string), `new_user` (dict with `pass` pre-encrypted if changing)
+- **Returns:** None
+- **Safety Tier:** Dangerous
+- **Example:**
+  ```python
+  encrypted = await client.call("acl", "encrypt_password", "newpass")
+  new_user = {"name": "operator", "pass": encrypted, "modules": ["init", "proc", "cron"]}
+  await client.call("acl", "modify_user", "operator", new_user)
+  ```
+
+### delete_from_groups
+
+Remove a user from all Webmin groups. Should be called before delete_user.
+
+- **Method:** `acl::delete_from_groups`
+- **Arguments:** `username` (string)
+- **Returns:** None
+- **Example:**
+  ```python
+  await client.call("acl", "delete_from_groups", "operator")
+  ```
+
+### delete_user
+
+Delete a Webmin user account.
+
+- **Method:** `acl::delete_user`
+- **Arguments:** `username` (string)
+- **Returns:** None
+- **Safety Tier:** Dangerous
+- **Known Quirks:** Deleting the last superuser account will permanently lock out admin access. Call `delete_from_groups` first to clean up group memberships.
+- **Example:**
+  ```python
+  await client.call("acl", "delete_from_groups", "operator")
+  await client.call("acl", "delete_user", "operator")
+  ```
+
+---
+
+## Module: quota (Disk Quota Management)
+
+### list_filesystems
+
+List all filesystems and their quota support status.
+
+- **Method:** `quota::list_filesystems`
+- **Arguments:** None
+- **Returns:** List of arrays: [mount_point, device, type, options, quota_type, active, ...]
+- **Example:**
+  ```python
+  filesystems = await client.call("quota", "list_filesystems")
+  # Returns: [["/", "/dev/sda1", "ext4", "rw", 3, 1], ...]
+  ```
+
+### filesystem_users
+
+List all users with quotas on a filesystem.
+
+- **Method:** `quota::filesystem_users`
+- **Arguments:** `filesystem` (string) — mount point
+- **Returns:** Integer count of users with quotas. Quota data is populated into a Perl global `%user` hash which may not be accessible over XML-RPC.
+- **Known Quirks:** Over XML-RPC, typically only the count is returned. Use `user_quota` for individual lookups.
+- **Example:**
+  ```python
+  count = await client.call("quota", "filesystem_users", "/")
+  # Returns: 5
+  ```
+
+### user_quota
+
+Get quota limits and usage for a specific user on a filesystem.
+
+- **Method:** `quota::user_quota`
+- **Arguments:** `username` (string), `filesystem` (string)
+- **Returns:** 6-element array: [used_blocks, soft_blocks, hard_blocks, used_files, soft_files, hard_files]. Empty array if no quota set.
+- **Example:**
+  ```python
+  quota = await client.call("quota", "user_quota", "alice", "/")
+  # Returns: [500, 1000, 2000, 50, 100, 200]
+  ```
+
+### group_quota
+
+Get quota limits and usage for a specific group on a filesystem.
+
+- **Method:** `quota::group_quota`
+- **Arguments:** `group` (string), `filesystem` (string)
+- **Returns:** 6-element array (same format as user_quota). Empty array if no quota set.
+- **Example:**
+  ```python
+  quota = await client.call("quota", "group_quota", "developers", "/home")
+  # Returns: [2000, 5000, 10000, 500, 1000, 2000]
+  ```
+
+### block_size
+
+Get the block size for a filesystem.
+
+- **Method:** `quota::block_size`
+- **Arguments:** `filesystem` (string) — mount point
+- **Returns:** Integer (block size in bytes, typically 1024)
+- **Example:**
+  ```python
+  bs = await client.call("quota", "block_size", "/")
+  # Returns: 1024
+  ```
+
+### edit_user_quota
+
+Set quota limits for a user on a filesystem.
+
+- **Method:** `quota::edit_user_quota`
+- **Arguments:** `user` (string), `filesystem` (string), `soft_blocks` (int), `hard_blocks` (int), `soft_files` (int), `hard_files` (int)
+- **Returns:** None
+- **Safety Tier:** Dangerous
+- **Example:**
+  ```python
+  await client.call("quota", "edit_user_quota", "alice", "/", 1000, 2000, 100, 200)
+  ```
+
+### user_filesystems
+
+Get quota usage for a user across all filesystems.
+
+- **Method:** `quota::user_filesystems`
+- **Arguments:** `username` (string)
+- **Returns:** Integer count of filesystems. Quota data is stored in Perl global `%filesys` hash.
+- **Known Quirks:** Over XML-RPC, only the count is returned. Prefer `user_quota(user, fs)` for reliable data retrieval.
+
+---
+
+## Module: passwd (Password Changes)
+
+**Status: Integrated.** The `change_password` tool uses `passwd::find_user` and `passwd::change_password` instead of `useradmin::modify_user` directly. This provides proper password encryption, shadow timestamp updates, file locking, pre/post hooks, cross-module propagation (Samba, MySQL, etc.), and LDAP user support.
+
+### Functions Used
+
+| Function | Parameters | Returns | Notes |
+|----------|------------|---------|-------|
+| `passwd::find_user` | `name` (string) | User hash with `mod` key, or `undef` | Searches both local and LDAP backends |
+| `passwd::change_password` | `user` (hash), `pass` (string), `do_others` (0\|1) | Nothing | Encrypts password, updates timestamps, runs hooks, propagates to other modules |
+
+---
+
 ## Endpoints To Be Documented
 
 The following endpoints may be documented in future phases:
 
-- [ ] quota:: — Disk quota management
-- [ ] passwd:: — Password changes
-- [ ] acl:: — Webmin ACL management
+- [x] quota:: — Disk quota management
+- [x] passwd:: — Password changes (skipped — covered by useradmin::modify_user)
+- [x] acl:: — Webmin ACL management
 - [x] software:: — Package management (read-only)
 - [x] smart-status:: — SMART disk health
 - [x] lvm:: — Logical Volume Manager
@@ -748,5 +968,5 @@ The following endpoints may be documented in future phases:
 
 ---
 
-Document Version: 1.5
+Document Version: 1.6
 Last Updated: February 16, 2026
