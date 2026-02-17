@@ -28,8 +28,8 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 - [x] `quota::` — Disk quota management
 - [x] `passwd::` — Password changes (covered by existing `change_password` via `useradmin::modify_user`)
 - [x] `acl::` — Webmin ACL management
-- [ ] `firewall::` — Firewall rules (not available on some systems)
-- [ ] `bind8::` — DNS configuration (not available on some systems)
+- [ ] `firewall::` — Firewall rules (deferred — niche use case, high risk via AI; add if requested)
+- [ ] `bind8::` — DNS configuration (deferred — most users use hosted DNS; add if requested)
 
 ---
 
@@ -48,4 +48,4 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
 ---
 
-*Last updated: 2026-02-16 (quota, acl modules implemented; passwd covered by existing tools)*
+*Last updated: 2026-02-16*
