@@ -62,6 +62,7 @@ Thumbs.db
 
 # Project specific
 *.log
+tmp/
 
 # Internal development files (not for public repo)
 CLAUDE.md
