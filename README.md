@@ -7,6 +7,10 @@
 
 An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that provides Claude with tools to manage Linux systems via [Webmin](https://webmin.com)'s administration interface.
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/gjenkins20-webmin-mcp-server).
+
 ## Features
 
 - **Multi-Server Support** -- Manage multiple Webmin servers with user-friendly aliases
