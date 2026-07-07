@@ -49,6 +49,7 @@ class TestWebminClientXMLRPC:
                     await client.call("webmin", "get_webmin_version")
 
             assert "Authentication failed" in str(exc_info.value)
+            assert "two-factor" in str(exc_info.value)
 
     async def test_xmlrpc_rpc_forbidden(
         self,
@@ -64,6 +65,7 @@ class TestWebminClientXMLRPC:
                     await client.call("webmin", "get_webmin_version")
 
             assert "RPC permissions" in str(exc_info.value)
+            assert "RPC/API-only" in str(exc_info.value)
 
     async def test_xmlrpc_call_generic_method(
         self,

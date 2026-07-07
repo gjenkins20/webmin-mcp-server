@@ -212,11 +212,19 @@ class WebminClient:
             if e.errcode == 401:
                 raise WebminAuthError(
                     "Authentication failed. Check username/password and "
-                    "ensure user has 'Can accept RPC calls' permission."
+                    "ensure user has 'Can accept RPC calls' permission. If "
+                    "this account has two-factor authentication enabled, "
+                    "Webmin 2.640+ rejects RPC requests the same way — use "
+                    "an account without 2FA, or a dedicated RPC/API-only "
+                    "account (Webmin 2.650+)."
                 ) from e
             elif e.errcode == 403:
                 raise WebminAuthError(
-                    "Access forbidden. User may not have RPC permissions."
+                    "Access forbidden. User may not have RPC permissions. "
+                    "If this account has two-factor authentication enabled, "
+                    "Webmin 2.640+ rejects RPC requests the same way — use "
+                    "an account without 2FA, or a dedicated RPC/API-only "
+                    "account (Webmin 2.650+)."
                 ) from e
             elif e.errcode == 404:
                 raise WebminRPCError(

@@ -102,7 +102,10 @@ An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that p
 
 The MCP server uses Webmin's XML-RPC API. Ensure your Webmin server is configured:
 
-1. **Enable RPC Access**: In Webmin -> Webmin Users -> (your user) -> enable "Can accept RPC calls"
+1. **Provision the service account**:
+   - **Webmin 2.650+ (recommended)**: Create a dedicated **RPC/API-only** account in Webmin -> Webmin Users. This account type exists specifically for automation like this MCP server -- it blocks browser/module access entirely and is unaffected by the two-factor caveat below.
+   - **Older Webmin versions**: In Webmin -> Webmin Users -> (your user) -> enable "Can accept RPC calls".
+   - **Two-factor authentication caveat**: Webmin 2.640+ rejects RPC Basic-Auth requests for accounts that have 2FA enabled -- the RPC call fails with a generic 401/403. If you enable 2FA on your Webmin users, use a dedicated RPC/API-only account for this MCP server rather than a 2FA-enrolled one.
 2. **Install XML::Parser**: The Perl XML::Parser module must be installed:
    ```bash
    # Debian/Ubuntu
@@ -112,6 +115,7 @@ The MCP server uses Webmin's XML-RPC API. Ensure your Webmin server is configure
    sudo yum install perl-XML-Parser
    ```
 3. **Module Access**: Grant the user access to required modules (System Status, Bootup and Shutdown, Users and Groups, Scheduled Cron Jobs, Network Configuration)
+4. **RPC timeout (optional)**: For tools that read/write large files, Webmin 2.620+ has a config option to raise the default RPC timeout (Webmin Configuration -> Advanced Options). Increase it if you see timeouts on large file operations.
 
 ## Configuration
 

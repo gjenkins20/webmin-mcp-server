@@ -33,6 +33,17 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
 ---
 
+## Maintenance
+
+- [x] **Webmin API audit (through 2.650) — apply auth/RPC updates**
+  - [x] Improve 2FA/RPC auth error message in `src/webmin_client.py` (~211–225) — verified end-to-end against a real, patched, 2FA-enrolled account
+  - [x] Document RPC/API-only accounts (Webmin 2.650) in README setup
+  - [x] Verify 2.630 input-validation tightening via `tests/live_test_phase7.py` — ran against a live upgraded server, all calls behaved correctly
+  - [x] Document RPC timeout config option (2.620)
+  - Full audit: `docs/webmin-api-audit-2026-06.md`
+
+---
+
 ## Completed
 
 - [x] `software::` — Package management (read-only)
@@ -48,4 +59,4 @@ From `docs/webmin_api_map.md` - endpoints to be documented and implemented:
 
 ---
 
-*Last updated: 2026-02-16*
+*Last updated: 2026-07-07*
